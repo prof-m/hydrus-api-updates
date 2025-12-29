@@ -129,29 +129,78 @@ class HydrusResourceClientAPIRestrictedManageTagsSetRelationships( HydrusResourc
     
     def _threadDoPOSTJob( self, request: HydrusServerRequest.HydrusRequest ):
         
-        tag_service_key = request.parsed_request_args.GetValue( 'tag_service_key', bytes )
+        tag = request.parsed_request_args.GetValue( 'tag', str, default_value = None )
         
-        service = ClientLocalServerCore.CheckTagService( tag_service_key )
+        if tag is None:
+            
+            raise HydrusExceptions.BadRequestException( 'Missing required "tag" parameter!' )
+            
         
         default_reason = request.parsed_request_args.GetValue( 'reason', str, default_value = 'Set by Client API' )
         
-        siblings_actions = request.parsed_request_args.GetValue( 'tag_siblings', dict, default_value = {} )
-        parents_actions = request.parsed_request_args.GetValue( 'tag_parents', dict, default_value = {} )
+        try:
+            
+            tag = HydrusTags.CleanTag( tag )
+            HydrusTags.CheckTagNotEmpty( tag )
+            
+        except HydrusExceptions.TagSizeException as e:
+            
+            raise HydrusExceptions.BadRequestException( str( e ) )
+            
+        
+        service_keys_to_actions_to_tag_siblings = _GetServiceKeysToActionsToTags(
+            request.parsed_request_args,
+            (
+                'service_keys_to_actions_to_tag_siblings',
+                'service_key_to_action_to_tag_siblings'
+            )
+        )
+        
+        service_keys_to_actions_to_tag_parents = _GetServiceKeysToActionsToTags(
+            request.parsed_request_args,
+            (
+                'service_keys_to_actions_to_tag_parents',
+                'service_keys_to_actions_to_tag_tag_parents'
+            )
+        )
+        
+        if len( service_keys_to_actions_to_tag_siblings ) == 0 and len( service_keys_to_actions_to_tag_parents ) == 0:
+            
+            raise HydrusExceptions.BadRequestException( 'No relationship actions were given!' )
+            
         
         content_update_package = ClientContentUpdates.ContentUpdatePackage()
         
-        if len( siblings_actions ) > 0:
+        for ( service_key, actions_to_tags ) in service_keys_to_actions_to_tag_siblings.items():
             
-            content_updates = _BuildContentUpdatesFromPairs( siblings_actions, service, HC.CONTENT_TYPE_TAG_SIBLINGS, default_reason )
+            service = ClientLocalServerCore.CheckTagService( service_key )
             
-            content_update_package.AddContentUpdates( tag_service_key, content_updates )
+            actions_to_pairs = _BuildActionsToPairs( tag, actions_to_tags, pair_type = 'siblings' )
+            
+            if len( actions_to_pairs ) == 0:
+                
+                continue
+                
+            
+            content_updates = _BuildContentUpdatesFromPairs( actions_to_pairs, service, HC.CONTENT_TYPE_TAG_SIBLINGS, default_reason )
+            
+            content_update_package.AddContentUpdates( service_key, content_updates )
             
         
-        if len( parents_actions ) > 0:
+        for ( service_key, actions_to_tags ) in service_keys_to_actions_to_tag_parents.items():
             
-            content_updates = _BuildContentUpdatesFromPairs( parents_actions, service, HC.CONTENT_TYPE_TAG_PARENTS, default_reason )
+            service = ClientLocalServerCore.CheckTagService( service_key )
             
-            content_update_package.AddContentUpdates( tag_service_key, content_updates )
+            actions_to_pairs = _BuildActionsToPairs( tag, actions_to_tags, pair_type = 'parents' )
+            
+            if len( actions_to_pairs ) == 0:
+                
+                continue
+                
+            
+            content_updates = _BuildContentUpdatesFromPairs( actions_to_pairs, service, HC.CONTENT_TYPE_TAG_PARENTS, default_reason )
+            
+            content_update_package.AddContentUpdates( service_key, content_updates )
             
         
         if not content_update_package.HasContent():
@@ -349,3 +398,178 @@ def _BuildContentUpdatesFromPairs( actions_to_pairs: dict, service, content_type
         
     
     return content_updates
+
+
+def _GetServiceKeysToActionsToTags( parsed_request_args, key_names ) -> dict:
+    
+    service_keys_to_actions_to_tags = {}
+    
+    for key_name in key_names:
+        
+        if key_name not in parsed_request_args:
+            
+            continue
+            
+        
+        raw_dict = parsed_request_args.GetValue( key_name, dict, default_value = {} )
+        
+        HydrusNetworkVariableHandling.TestVariableType( key_name, raw_dict, dict )
+        
+        for ( service_key, actions_to_tags ) in raw_dict.items():
+            
+            if not isinstance( service_key, str ):
+                
+                raise HydrusExceptions.BadRequestException( f'Problem parsing {key_name}: expected hex string keys.' )
+                
+            
+            try:
+                
+                service_key = bytes.fromhex( service_key )
+                
+            except:
+                
+                raise HydrusExceptions.BadRequestException( f'Problem parsing {key_name}: could not parse service key "{service_key}".' )
+                
+            
+            HydrusNetworkVariableHandling.TestVariableType( f'{key_name} actions', actions_to_tags, dict )
+            
+            if service_key not in service_keys_to_actions_to_tags:
+                
+                service_keys_to_actions_to_tags[ service_key ] = {}
+                
+            
+            for ( action, tags ) in actions_to_tags.items():
+                
+                HydrusNetworkVariableHandling.TestVariableType( 'tags', tags, list )
+                
+                if action not in service_keys_to_actions_to_tags[ service_key ]:
+                    
+                    service_keys_to_actions_to_tags[ service_key ][ action ] = []
+                    
+                
+                service_keys_to_actions_to_tags[ service_key ][ action ].extend( tags )
+                
+            
+        
+    
+    return service_keys_to_actions_to_tags
+
+
+def _BuildActionsToPairs( tag: str, actions_to_tags: dict, pair_type: str ) -> dict:
+    
+    if pair_type not in ( 'siblings', 'parents' ):
+        
+        raise HydrusExceptions.BadRequestException( f'Unknown pair type "{pair_type}".' )
+        
+    
+    content_action_id_to_action_name = {
+        HC.CONTENT_UPDATE_ADD : 'add',
+        HC.CONTENT_UPDATE_DELETE : 'delete',
+        HC.CONTENT_UPDATE_PEND : 'pend',
+        HC.CONTENT_UPDATE_RESCIND_PEND : 'rescind_pend',
+        HC.CONTENT_UPDATE_PETITION : 'petition',
+        HC.CONTENT_UPDATE_RESCIND_PETITION : 'rescind_petition'
+    }
+    
+    actions_to_pairs = {}
+    
+    for ( action, tags ) in actions_to_tags.items():
+        
+        action_name = None
+        
+        if isinstance( action, str ):
+            
+            if action in _ACTION_NAME_TO_CONTENT_ACTION:
+                
+                action_name = action
+                
+            elif action.isdigit():
+                
+                action_id = int( action )
+                
+                if action_id in content_action_id_to_action_name:
+                    
+                    action_name = content_action_id_to_action_name[ action_id ]
+                    
+                
+            
+        elif isinstance( action, int ):
+            
+            if action in content_action_id_to_action_name:
+                
+                action_name = content_action_id_to_action_name[ action ]
+                
+            
+        
+        if action_name is None:
+            
+            raise HydrusExceptions.BadRequestException( f'Unrecognised action "{action}"!' )
+            
+        
+        if pair_type == 'siblings':
+            
+            for item in tags:
+                
+                if item is None:
+                    
+                    continue
+                    
+                
+                HydrusNetworkVariableHandling.TestVariableType( 'sibling pair', item, dict )
+                
+                if 'non_ideal_tag' not in item or 'ideal_tag' not in item:
+                    
+                    raise HydrusExceptions.BadRequestException( 'Sibling pairs must include "non_ideal_tag" and "ideal_tag".' )
+                    
+                
+                non_ideal_tag = item[ 'non_ideal_tag' ]
+                ideal_tag = item[ 'ideal_tag' ]
+                
+                try:
+                    
+                    non_ideal_tag = HydrusTags.CleanTag( non_ideal_tag )
+                    HydrusTags.CheckTagNotEmpty( non_ideal_tag )
+                    
+                    ideal_tag = HydrusTags.CleanTag( ideal_tag )
+                    HydrusTags.CheckTagNotEmpty( ideal_tag )
+                    
+                except HydrusExceptions.TagSizeException as e:
+                    
+                    raise HydrusExceptions.BadRequestException( str( e ) )
+                    
+                if ( non_ideal_tag == tag ) == ( ideal_tag == tag ):
+                    
+                    raise HydrusExceptions.BadRequestException( 'Sibling pairs must include the target tag exactly once.' )
+                    
+                
+                pair = ( non_ideal_tag, ideal_tag )
+                
+                actions_to_pairs.setdefault( action_name, [] ).append( pair )
+                
+            
+        else:
+            
+            for other_tag in tags:
+                
+                if other_tag is None:
+                    
+                    continue
+                    
+                
+                try:
+                    
+                    other_tag = HydrusTags.CleanTag( other_tag )
+                    HydrusTags.CheckTagNotEmpty( other_tag )
+                    
+                except HydrusExceptions.TagSizeException as e:
+                    
+                    raise HydrusExceptions.BadRequestException( str( e ) )
+                    
+                
+                pair = ( tag, other_tag )
+                
+                actions_to_pairs.setdefault( action_name, [] ).append( pair )
+            
+        
+    
+    return actions_to_pairs

@@ -1351,33 +1351,58 @@ Restricted access:
 
 Arguments (JSON body):
 :   
-*   `tag_service_key`: (hexadecimal, required)
+*   `tag`: (string, required)
 *   `reason`: (optional string, used for petitions/pends when a per-pair reason is not supplied)
-*   `tag_siblings`: (optional object of actions to sibling pairs)
-*   `tag_parents`: (optional object of actions to parent pairs)
+*   `service_keys_to_actions_to_tag_siblings`: (optional, an Object of tag service keys to tag sibling update actions to lists of tags)
+*   `service_keys_to_actions_to_tag_parents`: (optional, an Object of tag service keys to tag parent update actions to lists of tags)
 
-Each action maps to a list of pairs. Valid actions:
-:   
-*   `add`, `delete` (local tag services only)
-*   `pend`, `petition`, `rescind_pend`, `rescind_petition` (repository services)
+    One of `service_keys_to_actions_to_tag_siblings` or `service_keys_to_actions_to_tag_parents` must be present.
 
-Pairs can be `[ "bad_tag", "ideal_tag" ]` for siblings or `[ "child", "parent" ]` for parents. For pend/petition actions you can optionally provide `[tag_a, tag_b, "reason text"]`.
+    In 'service\_keys\_to...', the keys are as in [/get\_services](#get_services).
+
+    The permitted 'actions' are:
+
+    *   0 - Add to a local tag domain.
+    *   1 - Delete from a local tag domain.
+    *   2 - Pend to a tag repository.
+    *   3 - Rescind a pend from a tag repository.
+    *   4 - Petition from a tag repository. (This is special)
+    *   5 - Rescind a petition from a tag repository.
+    
+    Read about [Current Deleted Pending Petitioned](#CDPP) for more info on these states.
+
+    For tag siblings, each entry is an object with `non_ideal_tag` and `ideal_tag`, and the request's `tag` must appear in exactly one of those fields. For tag parents, each entry is a tag string that will be applied as a parent of the top-level `tag` attribute.
 
 ```json title="Example request body"
 {
-  "tag_service_key": "6c6f63616c2074616773",
-  "reason": "Set via API",
-  "tag_siblings": {
-    "add": [["blonde hair", "blond hair"]]
+  "tag" : "samus aran",
+  "reason": "Updated by API",
+  "service_keys_to_actions_to_tag_siblings": {
+    "6c6f63616c2074616773" : {
+      "0" : [
+        { "non_ideal_tag" : "samus_aran", "ideal_tag" : "samus aran" },
+        { "non_ideal_tag" : "character:samus aran", "ideal_tag" : "samus aran" }
+      ],
+      "1" : [
+        { "non_ideal_tag" : "zero suit samus", "ideal_tag" : "samus aran" }
+      ]
+    }
   },
-  "tag_parents": {
-    "add": [["samus aran", "series:metroid"]],
-    "delete": [["samus_aran_(cosplay)", "series:metroid"]]
+  "service_keys_to_actions_to_tag_parents" : {
+    "6c6f63616c2074616773" : {
+      "0" : ["series:metroid"],
+      "1" : ["series:metroid prime"]
+    },
+    "aa0424b501237041dab0308c02c35454d377eebd74cfbc5b9d7b3e16cc2193e9" : {
+      "2" : ["series:metroid"],
+      "4" : ["series:metroid prime"]
+    }
   }
 }
+
 ```
 
-Local tag services accept `add`/`delete`. Repository tag services expect `pend`/`petition`/`rescind_*`; using the wrong action for the service type will 400.
+Local tag services accept `0`/`1`. Repository tag services expect `2`/`3`/`4`/`5`; using the wrong action for the service type will 400.
 
 ### **GET `/add_tags/search_tags`** { id="add_tags_search_tags" }
 

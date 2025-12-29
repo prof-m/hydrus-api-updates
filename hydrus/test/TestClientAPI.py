@@ -3537,6 +3537,102 @@ class TestClientAPI( unittest.TestCase ):
         self.assertEqual( parents_reads[0][0], ( tag_service_key, [ 'blue_eyes' ], True ) )
         self.assertEqual( parents_reads[1][0], ( tag_service_key, [ 'blue eyes' ], True ) )
         
+        # /manage_tags/set_tag_relationships
+        
+        TG.test_controller.ClearWrites( 'content_updates' )
+        
+        api_permissions = set_up_permissions[ 'manage_tag_relationships' ]
+        
+        access_key_hex = api_permissions.GetAccessKey().hex()
+        
+        headers = { 'Hydrus-Client-API-Access-Key' : access_key_hex, 'Content-Type' : HC.mime_mimetype_string_lookup[ HC.APPLICATION_JSON ] }
+        
+        request_dict = {
+            'tag' : 'samus aran',
+            'reason' : 'Updated by API',
+            'service_keys_to_actions_to_tag_siblings' : {
+                CC.DEFAULT_LOCAL_TAG_SERVICE_KEY.hex() : {
+                    '0' : [
+                        { 'non_ideal_tag' : 'samus_aran', 'ideal_tag' : 'samus aran' },
+                        { 'non_ideal_tag' : 'character:samus aran', 'ideal_tag' : 'samus aran' }
+                    ],
+                    '1' : [
+                        { 'non_ideal_tag' : 'zero suit samus', 'ideal_tag' : 'samus aran' }
+                    ]
+                }
+            },
+            'service_keys_to_actions_to_tag_parents' : {
+                CC.DEFAULT_LOCAL_TAG_SERVICE_KEY.hex() : {
+                    '0' : [ 'series:metroid' ],
+                    '1' : [ 'series:metroid prime' ]
+                },
+                TG.test_controller.example_tag_repo_service_key.hex() : {
+                    '2' : [ 'series:metroid' ],
+                    '4' : [ 'series:metroid prime' ]
+                }
+            }
+        }
+        
+        request_body = json.dumps( request_dict )
+        
+        path = '/manage_tags/set_tag_relationships'
+        
+        connection.request( 'POST', path, body = request_body, headers = headers )
+        
+        response = connection.getresponse()
+        
+        data = response.read()
+        
+        self.assertEqual( response.status, 200 )
+        
+        expected_content_update_package = ClientContentUpdates.ContentUpdatePackage()
+        
+        expected_content_update_package.AddContentUpdates(
+            CC.DEFAULT_LOCAL_TAG_SERVICE_KEY,
+            [
+                ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_TAG_SIBLINGS, HC.CONTENT_UPDATE_ADD, ( 'samus_aran', 'samus aran' ) ),
+                ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_TAG_SIBLINGS, HC.CONTENT_UPDATE_ADD, ( 'character:samus aran', 'samus aran' ) ),
+                ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_TAG_SIBLINGS, HC.CONTENT_UPDATE_DELETE, ( 'zero suit samus', 'samus aran' ) ),
+                ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_TAG_PARENTS, HC.CONTENT_UPDATE_ADD, ( 'samus aran', 'series:metroid' ) ),
+                ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_TAG_PARENTS, HC.CONTENT_UPDATE_DELETE, ( 'samus aran', 'series:metroid prime' ) )
+            ]
+        )
+        
+        expected_content_update_package.AddContentUpdates(
+            TG.test_controller.example_tag_repo_service_key,
+            [
+                ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_TAG_PARENTS, HC.CONTENT_UPDATE_PEND, ( 'samus aran', 'series:metroid' ), reason = 'Updated by API' ),
+                ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_TAG_PARENTS, HC.CONTENT_UPDATE_PETITION, ( 'samus aran', 'series:metroid prime' ), reason = 'Updated by API' )
+            ]
+        )
+        
+        [ ( ( content_update_package, ), kwargs ) ] = TG.test_controller.GetWrite( 'content_updates' )
+        
+        HF.compare_content_update_packages( self, content_update_package, expected_content_update_package )
+        
+        # sibling pairs must include the requested tag exactly once
+        
+        request_dict = {
+            'tag' : 'samus aran',
+            'service_keys_to_actions_to_tag_siblings' : {
+                CC.DEFAULT_LOCAL_TAG_SERVICE_KEY.hex() : {
+                    '0' : [
+                        { 'non_ideal_tag' : 'samus_aran', 'ideal_tag' : 'character:samus aran' }
+                    ]
+                }
+            }
+        }
+        
+        request_body = json.dumps( request_dict )
+        
+        connection.request( 'POST', path, body = request_body, headers = headers )
+        
+        response = connection.getresponse()
+        
+        data = response.read()
+        
+        self.assertEqual( response.status, 400 )
+        
     
     def _test_add_favourite_tags( self, connection, set_up_permissions ):
         
