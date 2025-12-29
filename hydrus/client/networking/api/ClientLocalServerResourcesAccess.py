@@ -130,6 +130,7 @@ class HydrusResourceClientAPIRestrictedGetService( ClientLocalServerResources.Hy
                 ClientAPI.CLIENT_API_PERMISSION_ADD_NOTES,
                 ClientAPI.CLIENT_API_PERMISSION_MANAGE_PAGES,
                 ClientAPI.CLIENT_API_PERMISSION_MANAGE_FILE_RELATIONSHIPS,
+                ClientAPI.CLIENT_API_PERMISSION_MANAGE_TAG_RELATIONSHIPS,
                 ClientAPI.CLIENT_API_PERMISSION_SEARCH_FILES
             )
         )
@@ -218,6 +219,7 @@ class HydrusResourceClientAPIRestrictedGetServices( ClientLocalServerResources.H
                 ClientAPI.CLIENT_API_PERMISSION_ADD_NOTES,
                 ClientAPI.CLIENT_API_PERMISSION_MANAGE_PAGES,
                 ClientAPI.CLIENT_API_PERMISSION_MANAGE_FILE_RELATIONSHIPS,
+                ClientAPI.CLIENT_API_PERMISSION_MANAGE_TAG_RELATIONSHIPS,
                 ClientAPI.CLIENT_API_PERMISSION_SEARCH_FILES
             )
         )

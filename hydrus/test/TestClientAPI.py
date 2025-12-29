@@ -361,6 +361,7 @@ class TestClientAPI( unittest.TestCase ):
         permissions_to_set_up.append( ( 'everything', True, [] ) )
         permissions_to_set_up.append( ( 'add_files', False, [ ClientAPI.CLIENT_API_PERMISSION_ADD_FILES ] ) )
         permissions_to_set_up.append( ( 'add_tags', False, [ ClientAPI.CLIENT_API_PERMISSION_ADD_TAGS ] ) )
+        permissions_to_set_up.append( ( 'manage_tag_relationships', False, [ ClientAPI.CLIENT_API_PERMISSION_MANAGE_TAG_RELATIONSHIPS ] ) )
         permissions_to_set_up.append( ( 'add_urls', False, [ ClientAPI.CLIENT_API_PERMISSION_ADD_URLS ] ) )
         permissions_to_set_up.append( ( 'manage_pages', False, [ ClientAPI.CLIENT_API_PERMISSION_MANAGE_PAGES ] ) )
         permissions_to_set_up.append( ( 'manage_headers', False, [ ClientAPI.CLIENT_API_PERMISSION_MANAGE_HEADERS ] ) )
@@ -3406,6 +3407,133 @@ class TestClientAPI( unittest.TestCase ):
         [ ( ( content_update_package, ), kwargs ) ] = TG.test_controller.GetWrite( 'content_updates' )
         
         HF.compare_content_update_packages( self, content_update_package, expected_content_update_package )
+        
+    
+    def _test_manage_tags( self, connection, set_up_permissions ):
+        
+        # /manage_tags/get_tags
+        
+        api_permissions = set_up_permissions[ 'add_tags' ]
+        
+        access_key_hex = api_permissions.GetAccessKey().hex()
+        
+        headers = { 'Hydrus-Client-API-Access-Key' : access_key_hex }
+        
+        tag_service_key = CC.DEFAULT_LOCAL_TAG_SERVICE_KEY
+        tags = [ 'blue eyes', 'new_tag' ]
+        
+        tag_info = [
+            { 'tag' : 'blue eyes', 'tag_id' : 123, 'exists' : True },
+            { 'tag' : 'new_tag', 'tag_id' : None, 'exists' : False }
+        ]
+        
+        TG.test_controller.SetRead( 'tags_info', tag_info )
+        
+        path = '/manage_tags/get_tags?tag_service_key={}&tags={}'.format(
+            tag_service_key.hex(),
+            urllib.parse.quote( json.dumps( tags ) )
+        )
+        
+        connection.request( 'GET', path, headers = headers )
+        
+        response = connection.getresponse()
+        
+        data = response.read()
+        
+        text = str( data, 'utf-8' )
+        
+        self.assertEqual( response.status, 200 )
+        
+        d = json.loads( text )
+        
+        self.assertEqual( { 'tags' : tag_info }, d )
+        
+        [ ( args, kwargs ) ] = TG.test_controller.GetRead( 'tags_info' )
+        
+        self.assertEqual( args, ( tags, tag_service_key ) )
+        
+        # /manage_tags/get_tag_relationships
+        
+        api_permissions = set_up_permissions[ 'manage_tag_relationships' ]
+        
+        access_key_hex = api_permissions.GetAccessKey().hex()
+        
+        headers = { 'Hydrus-Client-API-Access-Key' : access_key_hex }
+        
+        siblings = {
+            HC.CONTENT_STATUS_CURRENT : { ( 'blue_eyes', 'blue eyes' ) }
+        }
+        
+        parents = {
+            HC.CONTENT_STATUS_CURRENT : { ( 'blue eyes', 'eye color' ) }
+        }
+        
+        TG.test_controller.SetRead( 'tag_siblings', siblings )
+        TG.test_controller.SetRead( 'tag_parents', parents )
+        
+        relationship_tags = [ 'blue_eyes', 'blue eyes' ]
+        
+        path = '/manage_tags/get_tag_relationships?tag_service_key={}&include_pending=true&tags={}'.format(
+            tag_service_key.hex(),
+            urllib.parse.quote( json.dumps( relationship_tags ) )
+        )
+        
+        connection.request( 'GET', path, headers = headers )
+        
+        response = connection.getresponse()
+        
+        data = response.read()
+        
+        text = str( data, 'utf-8' )
+        
+        self.assertEqual( response.status, 200 )
+        
+        d = json.loads( text )
+        
+        expected_result = {
+            'blue_eyes' : {
+                'tag_siblings' : {
+                    'current' : [ 'blue eyes' ],
+                    'pending' : [],
+                    'petitioned' : [],
+                    'deleted' : []
+                },
+                'tag_parents' : {
+                    'current' : [ 'eye color' ],
+                    'pending' : [],
+                    'petitioned' : [],
+                    'deleted' : []
+                }
+            },
+            'blue eyes' : {
+                'tag_siblings' : {
+                    'current' : [ 'blue_eyes' ],
+                    'pending' : [],
+                    'petitioned' : [],
+                    'deleted' : []
+                },
+                'tag_parents' : {
+                    'current' : [ 'eye color' ],
+                    'pending' : [],
+                    'petitioned' : [],
+                    'deleted' : []
+                }
+            }
+        }
+        
+        self.assertEqual( expected_result, d )
+        
+        siblings_reads = TG.test_controller.GetRead( 'tag_siblings' )
+        parents_reads = TG.test_controller.GetRead( 'tag_parents' )
+        
+        self.assertEqual( len( siblings_reads ), 2 )
+        self.assertEqual( len( parents_reads ), 2 )
+        
+        self.assertEqual( siblings_reads[0][0], ( tag_service_key, [ 'blue_eyes' ], True ) )
+        self.assertEqual( siblings_reads[1][0], ( tag_service_key, [ 'blue eyes' ], True ) )
+        
+        self.assertEqual( parents_reads[0][0], ( tag_service_key, [ 'blue_eyes' ], True ) )
+        self.assertEqual( parents_reads[1][0], ( tag_service_key, [ 'blue eyes' ], True ) )
         
     
     def _test_add_favourite_tags( self, connection, set_up_permissions ):
@@ -8272,6 +8400,7 @@ class TestClientAPI( unittest.TestCase ):
         self._test_edit_times( connection, set_up_permissions )
         self._test_edit_file_viewing_statistics( connection, set_up_permissions )
         self._test_add_tags( connection, set_up_permissions )
+        self._test_manage_tags( connection, set_up_permissions )
         self._test_add_tags_search_tags( connection, set_up_permissions )
         self._test_add_tags_get_tag_siblings_and_parents( connection, set_up_permissions )
         self._test_add_favourite_tags( connection, set_up_permissions )

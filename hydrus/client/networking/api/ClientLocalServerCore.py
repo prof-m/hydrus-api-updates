@@ -108,7 +108,8 @@ CLIENT_API_JSON_PARAMS = {
     'doublecheck_file_system',
     'only_in_view',
     'include_current_tags',
-    'include_pending_tags'
+    'include_pending_tags',
+    'include_pending'
 }
 
 CLIENT_API_JSON_BYTE_LIST_PARAMS = {

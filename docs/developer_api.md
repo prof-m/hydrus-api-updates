@@ -1213,7 +1213,7 @@ Response:
     !!! warning "Tag Relationships Apply In A Complicated Way"
         There are two caveats to this data:  
         
-        1. The siblings and parents here are not just what is in _tags->manage tag siblings/parents_, they are the final computed combination of rules as set in _tags->manage where tag siblings and parents apply_. The data given here is not guaranteed to be useful for editing siblings and parents on a particular service. That data, which is currently pair-based, will appear in a different API request in future.
+        1. The siblings and parents here are not just what is in _tags->manage tag siblings/parents_, they are the final computed combination of rules as set in _tags->manage where tag siblings and parents apply_. The data given here is not guaranteed to be useful for editing siblings and parents on a particular service. If you need the raw storage pairs to edit them, use the `/manage_tags/get_tag_relationships` endpoint described below.
         2. This is what is _actually processed, right now,_ for those user preferences, as per _tags->sibling/parent sync->review current sync_. It reflects what they currently see in the UI. If the user still has pending sync work, this computation will change in future, perhaps radically (e.g. if they just removed the whole PTR ruleset two minutes ago), as will the rest of the "display" domain. The results may be funky while a user is in the midst of syncing, but these values are fine for most purposes. In the short term, you can broadly assume that the rules here very closely align with what you see in a recent file metadata call that pulls storage vs display mappings. If you want to decorate an autocomplete results call with sibling or parent data, this data is good for that.
     
     - `ideal_tag` is how the tag appears in normal display to the user.
@@ -1226,6 +1226,158 @@ Response:
     Most situations are simple, but remember that siblings and parents in hydrus can get complex. If you want to display this data, I recommend you plan to support simple service-specific workflows, and add hooks to recognise conflicts and other difficulty and, when that happens, abandon ship (send the user back to Hydrus proper). Also, if you show summaries of the data anywhere, make sure you add a 'and 22 more...' overflow mechanism to your menus, since if you hit up 'azur lane' or 'pokemon', you are going to get hundreds of children.
     
     I generally warn you off computing sibling and parent mappings or counts yourself. The data from this request is best used for sibling and parent decorators on individual tags in a 'manage tags' presentation. The code that actually computes what siblings and parents look like in the 'display' context can be a pain at times, and I've already done it. Just run /search_tags or /file_metadata again after any changes you make and you'll get updated values.
+
+## Manage Tags (definitions and relationships)
+
+### **GET `/manage_tags/get_tags`** { id="manage_tags_get_tags" }
+
+_Check whether tags exist without touching any files._
+
+Restricted access:
+:   YES. Add Tags permission needed.
+
+Arguments (JSON or percent-encoded JSON):
+:   
+*   `tags`: (required, list of tags to look up)
+*   `tag_service_key`: (optional, hexadecimal, check for existence on this tag service)
+
+Response:
+:   A list of tag dictionaries for the cleaned, de-duplicated tags, each with `tag`, `tag_id` (or null), and `exists`. Tags are echoed back even if they do not exist; in that case `tag_id` is null and `exists` is false.
+
+If `tag_service_key` is omitted, this endpoint checks the global tag definitions table. If `tag_service_key` is provided, `exists` is true only if the tag is registered on that service (for autocomplete), and `tag_id` will be null when `exists` is false. If you need to ensure a tag is registered on a particular service, use `/manage_tags/create_tags` and look at the `created` result for that tag.
+
+```json title="Example response"
+{
+  "tags": [
+    { "tag": "series:metroid", "tag_id": 812, "exists": true },
+    { "tag": "creator:青い桜", "tag_id": 910, "exists": true },
+    { "tag": "new_made_up_tag", "tag_id": null, "exists": false }
+  ]
+}
+```
+
+### **POST `/manage_tags/create_tags`** { id="manage_tags_create_tags" }
+
+_Create tag definitions directly on a tag service (no file mappings required)._
+
+Restricted access:
+:   YES. Add Tags permission needed.
+
+Arguments (JSON body):
+:   
+*   `tag_service_key`: (hexadecimal, required, the tag service to create the definitions on)
+*   `tags`: (required, list of tags)
+
+Response:
+:   A list of created/confirmed tags, each with `tag`, `tag_id`, and `created` (true if it was newly added to that service).
+
+Access keys can be provided in headers or the JSON body as described above; omitted here for brevity.
+
+```json title="Example request body"
+{
+  "tag_service_key": "6c6f63616c2074616773",
+  "tags": ["series:metroid", "character:samus aran"]
+}
+```
+
+```json title="Example response"
+{
+  "tags": [
+    { "tag": "series:metroid", "tag_id": 812, "created": false },
+    { "tag": "character:samus aran", "tag_id": 813, "created": true }
+  ]
+}
+```
+
+!!! note "Counts and autocomplete"
+    Tags created this way are registered to the specified service immediately, so they will show up in autocomplete even before any file mappings are added.
+
+### **GET `/manage_tags/get_tag_relationships`** { id="manage_tags_get_tag_relationships" }
+
+_Fetch raw storage siblings and parents for a tag service._
+
+Restricted access:
+:   YES. **Manage Tag Relationships** permission needed.
+
+Arguments:
+:   
+*   `tag_service_key`: (hexadecimal, required)
+*   `tags`: (required, list)
+*   `include_pending`: (optional bool, default `false`; include pending/petitioned pairs in the chains)
+
+Response:
+:   An object keyed by tag name. Each value has `tag_siblings` and `tag_parents`, each keyed by `current`, `pending`, `petitioned`, `deleted`, with lists of related tag strings.
+    `tag_siblings` lists all other tags in the sibling chain for that status, and `tag_parents` lists the parent tags from any pairs in that chain.
+
+```json title="Example response (for tags [\"blue_eyes\", \"samus aran\"])"
+{
+  "blue_eyes": {
+    "tag_siblings": {
+      "current": ["blue eyes"],
+      "pending": [],
+      "petitioned": [],
+      "deleted": []
+    },
+    "tag_parents": {
+      "current": ["eye color"],
+      "pending": [],
+      "petitioned": [],
+      "deleted": []
+    }
+  },
+  "samus aran": {
+    "tag_siblings": {
+      "current": ["character:samus_aran", "samus_aran"],
+      "pending": ["zero suit samus"],
+      "petitioned": [],
+      "deleted": []
+    },
+    "tag_parents": {
+      "current": ["series:metroid"],
+      "pending": [],
+      "petitioned": [],
+      "deleted": []
+    }
+  }
+}
+```
+
+### **POST `/manage_tags/set_tag_relationships`** { id="manage_tags_set_tag_relationships" }
+
+_Create, modify, or remove tag sibling/parent pairs._
+
+Restricted access:
+:   YES. **Manage Tag Relationships** permission needed.
+
+Arguments (JSON body):
+:   
+*   `tag_service_key`: (hexadecimal, required)
+*   `reason`: (optional string, used for petitions/pends when a per-pair reason is not supplied)
+*   `tag_siblings`: (optional object of actions to sibling pairs)
+*   `tag_parents`: (optional object of actions to parent pairs)
+
+Each action maps to a list of pairs. Valid actions:
+:   
+*   `add`, `delete` (local tag services only)
+*   `pend`, `petition`, `rescind_pend`, `rescind_petition` (repository services)
+
+Pairs can be `[ "bad_tag", "ideal_tag" ]` for siblings or `[ "child", "parent" ]` for parents. For pend/petition actions you can optionally provide `[tag_a, tag_b, "reason text"]`.
+
+```json title="Example request body"
+{
+  "tag_service_key": "6c6f63616c2074616773",
+  "reason": "Set via API",
+  "tag_siblings": {
+    "add": [["blonde hair", "blond hair"]]
+  },
+  "tag_parents": {
+    "add": [["samus aran", "series:metroid"]],
+    "delete": [["samus_aran_(cosplay)", "series:metroid"]]
+  }
+}
+```
+
+Local tag services accept `add`/`delete`. Repository tag services expect `pend`/`petition`/`rescind_*`; using the wrong action for the service type will 400.
 
 ### **GET `/add_tags/search_tags`** { id="add_tags_search_tags" }
 

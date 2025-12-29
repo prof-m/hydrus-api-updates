@@ -257,6 +257,116 @@ class DB( HydrusDB.HydrusDB ):
         # helps linter
         self._controller = controller
         
+
+    def _CreateTags( self, tag_service_key: bytes, tags: collections.abc.Collection[ str ] ) -> list[ dict ]:
+        
+        if len( tags ) == 0:
+            
+            return []
+            
+        
+        tag_service_id = self.modules_services.GetServiceId( tag_service_key )
+        
+        tag_service_type = self.modules_services.GetServiceType( tag_service_id )
+        
+        if tag_service_type not in HC.REAL_TAG_SERVICES:
+            
+            raise HydrusExceptions.BadRequestException( 'That service is not a tag service!' )
+            
+        
+        clean_tags = HydrusTags.CleanTags( tags )
+        
+        results = []
+        tag_ids = set()
+        
+        for tag in clean_tags:
+            
+            existed = self.modules_tags.TagExists( tag )
+            
+            tag_id = self.modules_tags.GetTagId( tag )
+            
+            tag_ids.add( tag_id )
+            
+            results.append( { 'tag' : tag, 'tag_id' : tag_id, 'created' : not existed } )
+            
+        
+        # make sure the tag definition is registered against the service so it shows up in autocomplete immediately
+        file_service_ids = [ self.modules_services.combined_file_service_id ]
+        file_service_ids.extend( self.modules_services.GetServiceIds( HC.FILE_SERVICES_WITH_SPECIFIC_TAG_LOOKUP_CACHES ) )
+        
+        for file_service_id in file_service_ids:
+            
+            self.modules_tag_search.AddTags( file_service_id, tag_service_id, tag_ids )
+            
+        
+        return results
+        
+
+
+    def _GetTagsInfo( self, tags: collections.abc.Collection[ str ], tag_service_key: bytes | None = None ) -> list[ dict ]:
+        
+        if len( tags ) == 0:
+            
+            return []
+            
+        
+        clean_tags = HydrusTags.CleanTags( tags )
+        
+        results = []
+        
+        if tag_service_key is not None:
+            
+            tag_service_id = self.modules_services.GetServiceId( tag_service_key )
+            
+            tag_service_type = self.modules_services.GetServiceType( tag_service_id )
+            
+            if tag_service_type not in HC.REAL_TAG_SERVICES:
+                
+                raise HydrusExceptions.BadRequestException( 'That service is not a tag service!' )
+                
+            
+            file_service_id = self.modules_services.combined_file_service_id
+            
+            for tag in clean_tags:
+                
+                exists = self.modules_tags.TagExists( tag )
+                
+                tag_id = None
+                
+                if exists:
+                    
+                    tag_id = self.modules_tags.GetTagId( tag )
+                    
+                    exists = self.modules_tag_search.HasTag( file_service_id, tag_service_id, tag_id )
+                    
+                    if not exists:
+                        
+                        tag_id = None
+                        
+                    
+                
+                results.append( { 'tag' : tag, 'tag_id' : tag_id, 'exists' : exists } )
+                
+            
+            return results
+            
+        
+        for tag in clean_tags:
+            
+            exists = self.modules_tags.TagExists( tag )
+            
+            tag_id = None
+            
+            if exists:
+                
+                tag_id = self.modules_tags.GetTagId( tag )
+                
+            
+            results.append( { 'tag' : tag, 'tag_id' : tag_id, 'exists' : exists } )
+            
+        
+        return results
+        
     
     def _AddService( self, service_key, service_type, name, dictionary ):
         
@@ -3850,6 +3960,7 @@ class DB( HydrusDB.HydrusDB ):
                 'tables_and_columns_using_definitions' : self._GetTablesAndColumnsUsingDefinitions,
                 'tag_display_maintenance_status' : self._CacheTagDisplayGetApplicationStatusNumbers,
                 'trash_hashes' : self._GetTrashHashes,
+                'tags_info' : self._GetTagsInfo
             }
         )
         
@@ -3930,6 +4041,7 @@ class DB( HydrusDB.HydrusDB ):
             {
                 'backup' : self._Backup,
                 'clear_orphan_file_records' : self._ClearOrphanFileRecords,
+                'create_tags' : self._CreateTags,
                 'delete_pending' : self._DeletePending,
                 'delete_service_info' : self._DeleteServiceInfo,
                 'dirty_services' : self._SaveDirtyServices,

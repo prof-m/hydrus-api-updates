@@ -16,6 +16,7 @@ from hydrus.client.networking.api import ClientLocalServerResourcesManageDatabas
 from hydrus.client.networking.api import ClientLocalServerResourcesManageFileRelationships
 from hydrus.client.networking.api import ClientLocalServerResourcesManagePages
 from hydrus.client.networking.api import ClientLocalServerResourcesManagePopups
+from hydrus.client.networking.api import ClientLocalServerResourcesManageTags
 from hydrus.client.networking.api import ClientLocalServerResourcesManageServices
 from hydrus.client.networking.api import ClientLocalServerResourcesManageFavouriteTags
 
@@ -185,6 +186,15 @@ class HydrusServiceClientAPI( HydrusClientService ):
         manage_popups.putChild( b'call_user_callable', ClientLocalServerResourcesManagePopups.HydrusResourceClientAPIRestrictedManagePopupsCallUserCallable( self._service, self._client_requests_domain ) )
         manage_popups.putChild( b'add_popup', ClientLocalServerResourcesManagePopups.HydrusResourceClientAPIRestrictedManagePopupsAddPopup( self._service, self._client_requests_domain ) )
         manage_popups.putChild( b'update_popup', ClientLocalServerResourcesManagePopups.HydrusResourceClientAPIRestrictedManagePopupsUpdatePopup( self._service, self._client_requests_domain ) )
+
+        manage_tags = notFound()
+        
+        root.putChild( b'manage_tags', manage_tags )
+        
+        manage_tags.putChild( b'get_tags', ClientLocalServerResourcesManageTags.HydrusResourceClientAPIRestrictedManageTagsGetTags( self._service, self._client_requests_domain ) )
+        manage_tags.putChild( b'create_tags', ClientLocalServerResourcesManageTags.HydrusResourceClientAPIRestrictedManageTagsCreateTags( self._service, self._client_requests_domain ) )
+        manage_tags.putChild( b'get_tag_relationships', ClientLocalServerResourcesManageTags.HydrusResourceClientAPIRestrictedManageTagsGetRelationships( self._service, self._client_requests_domain ) )
+        manage_tags.putChild( b'set_tag_relationships', ClientLocalServerResourcesManageTags.HydrusResourceClientAPIRestrictedManageTagsSetRelationships( self._service, self._client_requests_domain ) )
         
         return root
         
