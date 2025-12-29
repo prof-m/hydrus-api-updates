@@ -673,13 +673,16 @@ class FrameGUI( CAC.ApplicationCommandProcessorMixin, ClientGUITopLevelWindows.M
             self._locator.addProvider( ClientGUILocatorSearchProviders.GetSearchProvider( provider ) )
             
         
+        command_palette_num_chars_for_results_threshold = CG.client_controller.new_options.GetInteger( 'command_palette_num_chars_for_results_threshold' )
+        
         self._locator_widget = QLocator.QLocatorWidget( self,
             width = 800,
             resultHeight = 36,
             titleHeight = 36,
             primaryTextWidth = 430,
             secondaryTextWidth = 280,
-            maxVisibleItemCount = 16
+            maxVisibleItemCount = 16,
+            numCharsForResultsThreshold = command_palette_num_chars_for_results_threshold
         )
         self._locator_widget.setDefaultStylingEnabled( False )
         self._locator_widget.setLocator( self._locator )
@@ -4643,6 +4646,8 @@ ATTACH "client.mappings.db" as external_mappings;'''
         
         ClientGUIFunctions.UpdateAppDisplayName()
         
+        self._locator_widget.setNumCharsForResultsThreshold( CG.client_controller.new_options.GetInteger( 'command_palette_num_chars_for_results_threshold' ) )
+        
         self._controller.pub( 'wake_daemons' )
         self.SetStatusBarDirty()
         self._controller.pub( 'refresh_page_name' )
@@ -8316,9 +8321,9 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
                 
                 if page is not None:
                     
-                    parent = page.parentWidget()
+                    parent = ClientGUIPages.GetParentNotebook( page )
                     
-                    if isinstance( parent, ClientGUIPages.PagesNotebook ):
+                    if parent is not None and isinstance( parent, ClientGUIPages.PagesNotebook ):
                         
                         parent.RefreshAllPages()
                         

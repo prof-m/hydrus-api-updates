@@ -3347,7 +3347,8 @@ class TestClientAPI( unittest.TestCase ):
         
         media_results = [ HF.GetFakeMediaResult( bytes.fromhex( hash_hex ) ) for hash_hex in [ hash_hex, hash2_hex ] ]
         
-        media_results[1].GetTagsManager().GetDeleted( CC.DEFAULT_LOCAL_TAG_SERVICE_KEY, ClientTags.TAG_DISPLAY_STORAGE ).add( 'test_add' ) # cannot add when there is a deletion record
+        # cannot add when there is a deletion record
+        media_results[1].GetTagsManager().ProcessContentUpdate( CC.DEFAULT_LOCAL_TAG_SERVICE_KEY, ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_MAPPINGS, HC.CONTENT_UPDATE_DELETE, ( 'test_add', { hash2 } ) ) )
         
         TG.test_controller.SetRead( 'media_results', media_results )
         
@@ -3385,7 +3386,8 @@ class TestClientAPI( unittest.TestCase ):
         
         media_results = [ HF.GetFakeMediaResult( bytes.fromhex( hash_hex ) ) for hash_hex in [ hash_hex, hash2_hex ] ]
         
-        media_results[0].GetTagsManager().GetCurrent( CC.DEFAULT_LOCAL_TAG_SERVICE_KEY, ClientTags.TAG_DISPLAY_STORAGE ).add( 'test_delete' ) # can only delete when it already exists
+        # can only delete when it already exists
+        media_results[0].GetTagsManager().ProcessContentUpdate( CC.DEFAULT_LOCAL_TAG_SERVICE_KEY, ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_MAPPINGS, HC.CONTENT_UPDATE_ADD, ( 'test_delete', { hash } ) ) )
         
         TG.test_controller.SetRead( 'media_results', media_results )
         
@@ -4736,7 +4738,17 @@ class TestClientAPI( unittest.TestCase ):
                     'approved': 'approved',
                     'reason': 'This is the default User-Agent identifier for the client for all network connections.',
                     'value' : ClientDefaults.DEFAULT_USER_AGENT
-                }
+                },
+                'Cache-Control': {
+                    'approved': 'approved',
+                    'reason': 'Tells CDNs not to deliver "optimised" versions of files. May not be honoured.',
+                    'value': 'no-transform'
+                },
+                'Accept': {
+                    'approved': 'approved',
+                    'reason': 'Prefers jpeg/png over webp, but provides graceful fallback.',
+                    'value': 'image/jpeg,image/png,image/*;q=0.9,*/*;q=0.8'
+                },
             }
         }
         
@@ -4789,11 +4801,21 @@ class TestClientAPI( unittest.TestCase ):
                     'reason': 'This is the default User-Agent identifier for the client for all network connections.',
                     'value' : ClientDefaults.DEFAULT_USER_AGENT
                 },
+                'Cache-Control': {
+                    'approved': 'approved',
+                    'reason': 'Tells CDNs not to deliver "optimised" versions of files. May not be honoured.',
+                    'value': 'no-transform'
+                },
+                'Accept': {
+                    'approved': 'approved',
+                    'reason': 'Prefers jpeg/png over webp, but provides graceful fallback.',
+                    'value': 'image/jpeg,image/png,image/*;q=0.9,*/*;q=0.8'
+                },
                 'Test' : {
                     'approved': 'approved',
                     'reason': 'Set by Client API',
                     'value' : 'test_value'
-                }
+                },
             }
         }
         
@@ -4845,6 +4867,16 @@ class TestClientAPI( unittest.TestCase ):
                     'approved': 'approved',
                     'reason': 'This is the default User-Agent identifier for the client for all network connections.',
                     'value' : ClientDefaults.DEFAULT_USER_AGENT
+                },
+                'Cache-Control': {
+                    'approved': 'approved',
+                    'reason': 'Tells CDNs not to deliver "optimised" versions of files. May not be honoured.',
+                    'value': 'no-transform'
+                },
+                'Accept': {
+                    'approved': 'approved',
+                    'reason': 'Prefers jpeg/png over webp, but provides graceful fallback.',
+                    'value': 'image/jpeg,image/png,image/*;q=0.9,*/*;q=0.8'
                 },
                 'Test' : {
                     'approved': 'approved',
