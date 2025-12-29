@@ -1307,7 +1307,7 @@ Arguments:
 
 Response:
 :   An object keyed by tag name. Each value has `tag_siblings` and `tag_parents`, each keyed by `current`, `pending`, `petitioned`, `deleted`, with lists of related tag strings.
-    `tag_siblings` lists all other tags in the sibling chain for that status, and `tag_parents` lists the parent tags from any pairs in that chain.
+    `tag_siblings` lists all tags directly paired to the requested tag for that status, and `tag_parents` lists direct parents for the requested tag.
 
 ```json title="Example response (for tags [\"blue_eyes\", \"samus aran\"])"
 {

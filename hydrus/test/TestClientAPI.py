@@ -3501,7 +3501,7 @@ class TestClientAPI( unittest.TestCase ):
                     'deleted' : []
                 },
                 'tag_parents' : {
-                    'current' : [ 'eye color' ],
+                    'current' : [],
                     'pending' : [],
                     'petitioned' : [],
                     'deleted' : []

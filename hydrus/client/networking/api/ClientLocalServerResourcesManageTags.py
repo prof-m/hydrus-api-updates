@@ -199,11 +199,14 @@ def _CollapseSiblingPairs( tag: str, statuses_to_pairs: dict ) -> dict:
         
         for ( bad_tag, good_tag ) in pairs:
             
-            related_tags.add( bad_tag )
-            related_tags.add( good_tag )
+            if bad_tag == tag:
+                
+                related_tags.add( good_tag )
+                
+            elif good_tag == tag:
+                
+                related_tags.add( bad_tag )
             
-        
-        related_tags.discard( tag )
         
         statuses_out[ status ] = sorted( related_tags )
         
@@ -217,9 +220,7 @@ def _CollapseParentPairs( tag: str, statuses_to_pairs: dict ) -> dict:
     
     for ( status, pairs ) in statuses_to_pairs.items():
         
-        parent_tags = { parent_tag for ( child_tag, parent_tag ) in pairs }
-        
-        parent_tags.discard( tag )
+        parent_tags = { parent_tag for ( child_tag, parent_tag ) in pairs if child_tag == tag }
         
         statuses_out[ status ] = sorted( parent_tags )
         
