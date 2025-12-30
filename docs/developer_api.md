@@ -1294,7 +1294,7 @@ Access keys can be provided in headers or the JSON body as described above; omit
 
 ### **GET `/manage_tags/get_tag_relationships`** { id="manage_tags_get_tag_relationships" }
 
-_Fetch raw storage siblings and parents for a tag service._
+_Fetch **raw** storage siblings and parents for a tag service. This is different than `/add_tags/get_tag_relationships` which returns **computed** tag relationships instead.
 
 Restricted access:
 :   YES. **Manage Tag Relationships** permission needed.

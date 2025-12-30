@@ -3610,6 +3610,43 @@ class TestClientAPI( unittest.TestCase ):
         
         HF.compare_content_update_packages( self, content_update_package, expected_content_update_package )
         
+        # regression: sibling-only request should not crash on pair handling
+        
+        TG.test_controller.ClearWrites( 'content_updates' )
+        
+        request_dict = {
+            'tag' : 'brainwashing',
+            'service_keys_to_actions_to_tag_siblings' : {
+                CC.DEFAULT_LOCAL_TAG_SERVICE_KEY.hex() : {
+                    '0' : [
+                        { 'non_ideal_tag' : 'bainwashing', 'ideal_tag' : 'brainwashing' }
+                    ]
+                }
+            }
+        }
+        
+        request_body = json.dumps( request_dict )
+        
+        connection.request( 'POST', path, body = request_body, headers = headers )
+        
+        response = connection.getresponse()
+        
+        data = response.read()
+        
+        self.assertEqual( response.status, 200 )
+        
+        expected_content_update_package = ClientContentUpdates.ContentUpdatePackage()
+        expected_content_update_package.AddContentUpdates(
+            CC.DEFAULT_LOCAL_TAG_SERVICE_KEY,
+            [
+                ClientContentUpdates.ContentUpdate( HC.CONTENT_TYPE_TAG_SIBLINGS, HC.CONTENT_UPDATE_ADD, ( 'bainwashing', 'brainwashing' ) )
+            ]
+        )
+        
+        [ ( ( content_update_package, ), kwargs ) ] = TG.test_controller.GetWrite( 'content_updates' )
+        
+        HF.compare_content_update_packages( self, content_update_package, expected_content_update_package )
+        
         # sibling pairs must include the requested tag exactly once
         
         request_dict = {

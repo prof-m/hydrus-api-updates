@@ -347,11 +347,6 @@ def _BuildContentUpdatesFromPairs( actions_to_pairs: dict, service, content_type
             
             reason = default_reason
             
-            if not HydrusNetworkVariableHandling.IsJSONable( pair ):
-                
-                continue
-                
-            
             if isinstance( pair, ( list, tuple ) ):
                 
                 if len( pair ) == 2:
