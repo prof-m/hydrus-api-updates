@@ -3405,12 +3405,11 @@ class DB( HydrusDB.HydrusDB ):
         
         #
         
-        inclusive = True
         pending_count = 0
         
         tag_ids_to_full_counts = { tag_id : ( int( score * 1000 ), None, pending_count, None ) for ( tag_id, score ) in tag_ids_to_scores.items() }
         
-        predicates = self.modules_tag_display.GeneratePredicatesFromTagIdsAndCounts( tag_display_type, tag_service_id, tag_ids_to_full_counts, inclusive )
+        predicates = self.modules_tag_display.GeneratePredicatesFromTagIdsAndCounts( tag_display_type, tag_service_id, tag_ids_to_full_counts )
         
         result_predicates = []
         
@@ -3747,11 +3746,13 @@ class DB( HydrusDB.HydrusDB ):
         
         file_import_options = file_import_job.GetFileImportOptions()
         
-        destination_location_context = file_import_options.GetDestinationLocationContext()
+        location_import_options = file_import_options.GetLocationImportOptions()
+        
+        destination_location_context = location_import_options.GetDestinationLocationContext()
         
         destination_location_context.FixMissingServices( ClientLocation.ValidLocalDomainsFilter )
         
-        file_import_options.CheckReadyToImport()
+        location_import_options.CheckReadyToImport()
         
         hash = file_import_job.GetHash()
         
@@ -3852,7 +3853,7 @@ class DB( HydrusDB.HydrusDB ):
             
             #
             
-            if file_import_options.AutomaticallyArchives():
+            if file_import_options.GetLocationImportOptions().AutomaticallyArchives():
                 
                 if HG.file_import_report_mode:
                     
@@ -3908,7 +3909,7 @@ class DB( HydrusDB.HydrusDB ):
             
             HydrusSerialisable.CreateFromNetworkBytes( update_network_bytes )
             
-        except:
+        except Exception as e:
             
             HydrusData.ShowText( 'Was unable to parse an incoming update!' )
             
@@ -6401,7 +6402,7 @@ class DB( HydrusDB.HydrusDB ):
                     
                     HydrusTags.CheckTagNotEmpty( cleaned_tag )
                     
-                except:
+                except Exception as e:
                     
                     cleaned_tag = 'unrecoverable invalid tag'
                     
@@ -6472,7 +6473,7 @@ class DB( HydrusDB.HydrusDB ):
                 
                 HydrusData.Print( f'Invalid tag fixing: tag_id {tag_id}: "{tag}" replaced with "{cleaned_tag}"' )
                 
-            except:
+            except Exception as e:
                 
                 HydrusData.Print( f'Invalid tag fixing: tag_id {tag_id}: Could not even print the bad tag to the log! It is now known as "{cleaned_tag}"' )
                 
@@ -7048,7 +7049,7 @@ class DB( HydrusDB.HydrusDB ):
             
             self._Execute( 'UPDATE options SET options = ?;', ( options, ) )
             
-        except:
+        except Exception as e:
             
             HydrusData.Print( 'Failed options save dump:' )
             HydrusData.Print( options )
@@ -7615,7 +7616,7 @@ class DB( HydrusDB.HydrusDB ):
                 
                 do_it = True
                 
-            except:
+            except Exception as e:
                 
                 do_it = False
                 
@@ -7752,7 +7753,7 @@ class DB( HydrusDB.HydrusDB ):
                     
                     do_it = True
                     
-                except:
+                except Exception as e:
                     
                     do_it = False
                     
@@ -7913,7 +7914,7 @@ class DB( HydrusDB.HydrusDB ):
                     
                     user_wants_us_to_leave_it_on = new_options.GetBoolean( 'always_show_system_everything' )
                     
-                except:
+                except Exception as e:
                     
                     user_wants_us_to_leave_it_on = False
                     
@@ -8886,6 +8887,29 @@ class DB( HydrusDB.HydrusDB ):
                 
             
         
+        if version == 653:
+            
+            try:
+                
+                new_options = self.modules_serialisable.GetJSONDump( HydrusSerialisable.SERIALISABLE_TYPE_CLIENT_OPTIONS )
+                
+                if new_options.GetInteger( 'command_palette_num_chars_for_results_threshold' ) == 0:
+                    
+                    new_options.SetInteger( 'command_palette_num_chars_for_results_threshold', 1 )
+                    
+                    self.modules_serialisable.SetJSONDump( new_options )
+                    
+                
+            except Exception as e:
+                
+                HydrusData.PrintException( e )
+                
+                message = 'Trying to update your options failed! Please let hydrus dev know!'
+                
+                self.pub_initial_message( message )
+                
+            
+        
         self._controller.frame_splash_status.SetTitleText( 'updated db to v{}'.format( HydrusNumbers.ToHumanInt( version + 1 ) ) )
         
         self._Execute( 'UPDATE version SET version = ?;', ( version + 1, ) )
@@ -9051,7 +9075,7 @@ class DB( HydrusDB.HydrusDB ):
             
             try:
                 
-                HydrusDB.CheckCanVacuumCursor( db_path, self._c )
+                HydrusDB.CheckCanVacuumIntoCursor( db_path, self._c )
                 
             except Exception as e:
                 

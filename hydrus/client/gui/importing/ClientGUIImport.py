@@ -38,9 +38,9 @@ from hydrus.client.gui.widgets import ClientGUICommon
 from hydrus.client.gui.widgets import ClientGUIRegex
 from hydrus.client.importing import ClientImporting
 from hydrus.client.importing.options import ClientImportOptions
-from hydrus.client.importing.options import FileImportOptions
+from hydrus.client.importing.options import FileImportOptionsLegacy
 from hydrus.client.importing.options import NoteImportOptions
-from hydrus.client.importing.options import TagImportOptions
+from hydrus.client.importing.options import TagImportOptionsLegacy
 from hydrus.client.metadata import ClientTags
 from hydrus.client.metadata import ClientMetadataMigrationExporters
 from hydrus.client.metadata import ClientMetadataMigrationImporters
@@ -170,7 +170,7 @@ class FilenameTaggingOptionsPanel( QW.QWidget ):
             
             # pull from an options default
             
-            filename_tagging_options = TagImportOptions.FilenameTaggingOptions()
+            filename_tagging_options = TagImportOptionsLegacy.FilenameTaggingOptions()
             
         
         super().__init__( parent )
@@ -203,7 +203,7 @@ class FilenameTaggingOptionsPanel( QW.QWidget ):
     
     def GetFilenameTaggingOptions( self ):
         
-        filename_tagging_options = TagImportOptions.FilenameTaggingOptions()
+        filename_tagging_options = TagImportOptionsLegacy.FilenameTaggingOptions()
         
         self._advanced_panel.UpdateFilenameTaggingOptions( filename_tagging_options )
         self._simple_panel.UpdateFilenameTaggingOptions( filename_tagging_options )
@@ -1273,7 +1273,7 @@ class EditFilenameTaggingOptionPanel( ClientGUIScrolledPanels.EditPanel ):
             
             tags = filename_tagging_options.GetTags( self._service_key, example_path_input )
             
-        except:
+        except Exception as e:
             
             tags = [ 'could not parse' ]
             
@@ -1317,7 +1317,7 @@ class GalleryImportPanel( ClientGUICommon.StaticBox ):
     
     def __init__( self, parent, page_key, name = 'gallery query' ):
         
-        super().__init__( parent, name )
+        super().__init__( parent, name, start_expanded = True, can_expand = True )
         
         self._page_key = page_key
         
@@ -1352,10 +1352,10 @@ class GalleryImportPanel( ClientGUICommon.StaticBox ):
         self._file_limit.valueChanged.connect( self.EventFileLimit )
         self._file_limit.setToolTip( ClientGUIFunctions.WrapToolTip( 'stop searching the gallery once this many files has been reached' ) )
         
-        file_import_options = FileImportOptions.FileImportOptions()
+        file_import_options = FileImportOptionsLegacy.FileImportOptionsLegacy()
         file_import_options.SetIsDefault( True )
         
-        tag_import_options = TagImportOptions.TagImportOptions( is_default = True )
+        tag_import_options = TagImportOptionsLegacy.TagImportOptionsLegacy( is_default = True )
         
         note_import_options = NoteImportOptions.NoteImportOptions()
         note_import_options.SetIsDefault( True )
@@ -1411,7 +1411,7 @@ class GalleryImportPanel( ClientGUICommon.StaticBox ):
         CG.client_controller.gui.RegisterUIUpdateWindow( self )
         
     
-    def _SetFileImportOptions( self, file_import_options: FileImportOptions.FileImportOptions ):
+    def _SetFileImportOptions( self, file_import_options: FileImportOptionsLegacy.FileImportOptionsLegacy ):
         
         if self._gallery_import is not None:
             
@@ -1427,7 +1427,7 @@ class GalleryImportPanel( ClientGUICommon.StaticBox ):
             
         
     
-    def _SetTagImportOptions( self, tag_import_options: TagImportOptions.TagImportOptions ):
+    def _SetTagImportOptions( self, tag_import_options: TagImportOptionsLegacy.TagImportOptionsLegacy ):
         
         if self._gallery_import is not None:
             
@@ -1587,6 +1587,8 @@ class GalleryImportPanel( ClientGUICommon.StaticBox ):
     
 class GUGKeyAndNameSelector( ClientGUICommon.BetterButton ):
     
+    valueChanged = QC.Signal()
+    
     def __init__( self, parent, gug_key_and_name, update_callable = None ):
         
         super().__init__( parent, 'gallery selector', self._Edit )
@@ -1726,6 +1728,8 @@ class GUGKeyAndNameSelector( ClientGUICommon.BetterButton ):
             self._update_callable( gug_key_and_name )
             
         
+        self.valueChanged.emit()
+        
     
     def GetValue( self ):
         
@@ -1743,7 +1747,7 @@ class WatcherReviewPanel( ClientGUICommon.StaticBox ):
     
     def __init__( self, parent, page_key, name = 'watcher' ):
         
-        super().__init__( parent, name )
+        super().__init__( parent, name, start_expanded = True, can_expand = True )
         
         self._page_key = page_key
         self._watcher = None
@@ -1788,10 +1792,10 @@ class WatcherReviewPanel( ClientGUICommon.StaticBox ):
         
         self._checker_download_control = ClientGUINetworkJobControl.NetworkJobControl( checker_panel )
         
-        file_import_options = FileImportOptions.FileImportOptions()
+        file_import_options = FileImportOptionsLegacy.FileImportOptionsLegacy()
         file_import_options.SetIsDefault( True )
         
-        tag_import_options = TagImportOptions.TagImportOptions( is_default = True )
+        tag_import_options = TagImportOptionsLegacy.TagImportOptionsLegacy( is_default = True )
         
         note_import_options = NoteImportOptions.NoteImportOptions()
         note_import_options.SetIsDefault( True )

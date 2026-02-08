@@ -491,6 +491,11 @@ class BetterCheckBoxList( QW.QListWidget ):
         
         row_height = self.sizeHintForRow( 0 )
         
+        if row_height == -1:
+            
+            ( width_gumpf, row_height ) = ClientGUIFunctions.ConvertTextToPixels( self, ( 20, 1 ) )
+            
+        
         # ( width, height ) = ClientGUIFunctions.ConvertTextToPixels( self, ( 10, num_chars ) )
         
         height = ( row_height * num_chars ) + ( self.frameWidth() * 2 )
@@ -866,7 +871,7 @@ class BetterRadioBox( QW.QFrame ):
             
             self.SetValue( data )
             
-        except:
+        except Exception as e:
             
             pass
             

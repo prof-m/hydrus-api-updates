@@ -203,6 +203,7 @@ SIMPLE_DUPLICATE_FILTER_DENY_AUTO_RESOLUTION = 190
 SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_MEDIA_VIEWER = 191
 SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_MEDIA_VIEWER_DUPLICATE_FILTER = 192
 SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_GREENSCREEN = 193
+SIMPLE_START_SLIDESHOW = 194
 
 REARRANGE_THUMBNAILS_TYPE_FIXED = 0
 REARRANGE_THUMBNAILS_TYPE_COMMAND = 1
@@ -694,7 +695,7 @@ class ApplicationCommand( HydrusSerialisable.SerialisableBase ):
                     
                     value = bytes.fromhex( value )
                     
-                except:
+                except Exception as e:
                     
                     value = None
                     
@@ -1040,7 +1041,7 @@ class ApplicationCommand( HydrusSerialisable.SerialisableBase ):
                         
                         file_command_target_string = file_command_target_enum_to_str_lookup[ hacky_ipfs_dict[ 'file_command_target' ] ]
                         
-                    except:
+                    except Exception as e:
                         
                         file_command_target_string = 'unknown'
                         
@@ -1051,7 +1052,7 @@ class ApplicationCommand( HydrusSerialisable.SerialisableBase ):
                         
                         name = CG.client_controller.services_manager.GetName( ipfs_service_key )
                         
-                    except:
+                    except Exception as e:
                         
                         name = 'unknown service'
                         
@@ -1130,7 +1131,7 @@ class ApplicationCommand( HydrusSerialisable.SerialisableBase ):
                         
                         value_string = '(from {})'.format( from_name )
                         
-                    except:
+                    except Exception as e:
                         
                         value_string = ''
                         
@@ -1170,7 +1171,7 @@ class ApplicationCommand( HydrusSerialisable.SerialisableBase ):
                 return ' '.join( components )
                 
             
-        except:
+        except Exception as e:
             
             return 'Unknown Application Command: ' + repr( ( self._command_type, self._data ) )
             

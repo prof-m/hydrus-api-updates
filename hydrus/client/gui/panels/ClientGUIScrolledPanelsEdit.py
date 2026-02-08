@@ -22,7 +22,6 @@ from hydrus.client.gui import ClientGUIDialogsQuick
 from hydrus.client.gui import ClientGUIFunctions
 from hydrus.client.gui import ClientGUIShortcuts
 from hydrus.client.gui import ClientGUITopLevelWindowsPanels
-from hydrus.client.gui import QtInit
 from hydrus.client.gui import QtPorting as QP
 from hydrus.client.gui.canvas import ClientGUIMPV
 from hydrus.client.gui.importing import ClientGUIImportOptions
@@ -32,7 +31,7 @@ from hydrus.client.gui.lists import ClientGUIListCtrl
 from hydrus.client.gui.panels import ClientGUIScrolledPanels
 from hydrus.client.gui.widgets import ClientGUICommon
 from hydrus.client.importing.options import NoteImportOptions
-from hydrus.client.importing.options import TagImportOptions
+from hydrus.client.importing.options import TagImportOptionsLegacy
 from hydrus.client.media import ClientMedia
 from hydrus.client.media import ClientMediaResult
 from hydrus.client.metadata import ClientContentUpdates
@@ -49,9 +48,9 @@ class EditDefaultImportOptionsPanel( ClientGUIScrolledPanels.EditPanel ):
         url_classes,
         parsers,
         url_class_keys_to_parser_keys: dict[ bytes, bytes ],
-        file_post_default_tag_import_options: TagImportOptions.TagImportOptions,
-        watchable_default_tag_import_options: TagImportOptions.TagImportOptions,
-        url_class_keys_to_tag_import_options: dict[ bytes, TagImportOptions.TagImportOptions ],
+        file_post_default_tag_import_options: TagImportOptionsLegacy.TagImportOptionsLegacy,
+        watchable_default_tag_import_options: TagImportOptionsLegacy.TagImportOptionsLegacy,
+        url_class_keys_to_tag_import_options: dict[ bytes, TagImportOptionsLegacy.TagImportOptionsLegacy ],
         file_post_default_note_import_options: NoteImportOptions.NoteImportOptions,
         watchable_default_note_import_options: NoteImportOptions.NoteImportOptions,
         url_class_keys_to_note_import_options: dict[ bytes, NoteImportOptions.NoteImportOptions ]
@@ -455,7 +454,7 @@ class EditDefaultImportOptionsPanel( ClientGUIScrolledPanels.EditPanel ):
             
             unknown_import_options = HydrusSerialisable.CreateFromString( raw_text )
             
-            if isinstance( unknown_import_options, TagImportOptions.TagImportOptions ):
+            if isinstance( unknown_import_options, TagImportOptionsLegacy.TagImportOptionsLegacy ):
                 
                 insert_dict = self._url_class_keys_to_tag_import_options
                 
@@ -1440,7 +1439,7 @@ class EditFileNotesPanel( CAC.ApplicationCommandProcessorMixin, ClientGUIScrolle
             
             control.setPlainText( note )
             
-        except:
+        except Exception as e:
             
             control.setPlainText( repr( note ) )
             
@@ -1562,7 +1561,7 @@ class EditFileNotesPanel( CAC.ApplicationCommandProcessorMixin, ClientGUIScrolle
                     
                     control.setPlainText( note )
                     
-                except:
+                except Exception as e:
                     
                     control.setPlainText( repr( note ) )
                     
@@ -1857,15 +1856,6 @@ class EditMediaViewOptionsPanel( ClientGUIScrolledPanels.EditPanel ):
                 continue
                 
             
-            simple_mode = not advanced_mode
-            not_source = not HC.RUNNING_FROM_SOURCE
-            not_qt_6 = not QtInit.WE_ARE_QT6
-            
-            if action == CC.MEDIA_VIEWER_ACTION_SHOW_WITH_QMEDIAPLAYER and ( simple_mode or not_source or not_qt_6 ):
-                
-                continue
-                
-            
             s = CC.media_viewer_action_string_lookup[ action ]
             
             if action == CC.MEDIA_VIEWER_ACTION_SHOW_WITH_NATIVE and self._mime in [ HC.GENERAL_VIDEO ] + list( HC.VIDEO ):
@@ -1961,7 +1951,7 @@ class EditMediaViewOptionsPanel( ClientGUIScrolledPanels.EditPanel ):
         rows.append( ( 'preview starts paused: ', self._preview_start_paused ) )
         rows.append( ( 'preview starts covered with an embed button: ', self._preview_start_with_embed ) )
         
-        if set( possible_show_actions ).isdisjoint( { CC.MEDIA_VIEWER_ACTION_SHOW_WITH_NATIVE, CC.MEDIA_VIEWER_ACTION_SHOW_WITH_MPV, CC.MEDIA_VIEWER_ACTION_SHOW_WITH_QMEDIAPLAYER } ):
+        if set( possible_show_actions ).isdisjoint( { CC.MEDIA_VIEWER_ACTION_SHOW_WITH_NATIVE, CC.MEDIA_VIEWER_ACTION_SHOW_WITH_MPV, CC.MEDIA_VIEWER_ACTION_SHOW_WITH_QMEDIAPLAYER_VIDEO_WIDGET, CC.MEDIA_VIEWER_ACTION_SHOW_WITH_QMEDIAPLAYER_GRAPHICS_VIEW } ):
             
             self._media_scale_up.hide()
             self._media_scale_down.hide()

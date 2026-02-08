@@ -28,6 +28,7 @@ from hydrus.client.gui import ClientGUIShortcuts
 from hydrus.client.gui import ClientGUITopLevelWindowsPanels
 from hydrus.client.gui import QtPorting as QP
 from hydrus.client.gui.canvas import ClientGUICanvasMedia
+from hydrus.client.gui.canvas import ClientGUICanvasMenus
 from hydrus.client.gui.canvas import ClientGUIMPV
 from hydrus.client.gui.duplicates import ClientGUIDuplicatesContentMergeOptions
 from hydrus.client.gui.lists import ClientGUIListBoxes
@@ -41,6 +42,8 @@ from hydrus.client.media import ClientMedia
 from hydrus.client.media import ClientMediaResultPrettyInfo
 from hydrus.client.metadata import ClientContentUpdates
 from hydrus.client.metadata import ClientRatings
+
+# TODO: Clean this file up. split things into different files, put the rating stuff in its own guy, all that
 
 class RatingIncDecCanvas( ClientGUIRatings.RatingIncDec ):
 
@@ -824,9 +827,23 @@ class CanvasHoverFrameTop( CanvasHoverFrame ):
         
         self.setLayout( vbox )
         
-        self._window_always_on_top = False # can set this with a global option if you want
-
-        self._window_show_title_bar = True #should always start on
+        self._window_always_on_top = False
+        
+        # it is a bit beardy managing this from this hover window rather than the canvas, but it is fine for now
+        # if we want a shortcut or something I guess we'll migrate to the canvas proper
+        if CG.client_controller.new_options.GetBoolean( 'always_start_media_viewers_always_on_top' ):
+            
+            self._window_always_on_top = True
+            
+            self.window().setWindowFlag( QC.Qt.WindowType.WindowStaysOnTopHint, True )
+            
+        
+        self._window_hide_frame = False # should always start with titlebar/frame (to establish taskbar gubbins?)
+        
+        if CG.client_controller.new_options.GetBoolean( 'always_start_media_viewers_frameless' ):
+            
+            CG.client_controller.CallLaterQtSafe( self, 0.1, 'removing titlebar from media viewer', self._FlipHideWindowFrame )
+            
         
         CG.client_controller.sub( self, 'ProcessContentUpdatePackage', 'content_updates_gui' )
         CG.client_controller.sub( self, 'SetIndexString', 'canvas_new_index_string' )
@@ -1133,6 +1150,31 @@ class CanvasHoverFrameTop( CanvasHoverFrame ):
         new_options.SetStringList( 'default_media_viewer_custom_shortcuts', default_media_viewer_custom_shortcuts )
         
     
+    def _FlipCanvasAlwaysOnTop( self ):
+        
+        self._window_always_on_top = not self._window_always_on_top
+        
+        self.window().setWindowFlag( QC.Qt.WindowType.WindowStaysOnTopHint, self._window_always_on_top )
+        
+        self.window().show()
+        
+        self.update()
+        
+    
+    def _FlipHideWindowFrame( self ):
+        
+        window_real_geom = self.window().geometry()
+        
+        self._window_hide_frame = not self._window_hide_frame
+        
+        self.window().setWindowFlag( QC.Qt.WindowType.FramelessWindowHint, self._window_hide_frame )
+        
+        self.window().setGeometry( window_real_geom )
+        
+        self.window().show()
+        self.update()
+        
+    
     def _ShowFileEmbeddedMetadata( self ):
         
         if self._current_media is None:
@@ -1191,61 +1233,57 @@ class CanvasHoverFrameTop( CanvasHoverFrame ):
             self.update()
             
         
-        def flip_show_window_title_bar():
-            
-            window_real_geom = self.window().geometry()
-            
-            self._window_show_title_bar = not self._window_show_title_bar
-            
-            self.window().setWindowFlag( QC.Qt.WindowType.FramelessWindowHint, not self._window_show_title_bar )
-            
-            self.window().setGeometry( window_real_geom )
-
-            self.window().show()
-            self.update()
-
-
-        def flip_always_on_top():
-
-            self._window_always_on_top = not self._window_always_on_top
-            
-            self.parentWidget().window().setWindowFlag( QC.Qt.WindowType.WindowStaysOnTopHint, self._window_always_on_top )
-            self.window().setWindowFlag( QC.Qt.WindowType.WindowStaysOnTopHint, self._window_always_on_top )
-
-            self.parentWidget().window().show()
-            self.window().show()
-
-            self.update()
-        
         new_options = CG.client_controller.new_options
         
         menu = ClientGUIMenus.GenerateMenu( self )
         
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'always on top', 'Toggle whether this window is always on top.', self._window_always_on_top, flip_always_on_top )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'show titlebar', 'Toggle the OS frame of this window.', self._window_show_title_bar, flip_show_window_title_bar )
-
-        ClientGUIMenus.AppendSeparator( menu )
+        #
         
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'draw tags (left) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_tags_hover_in_media_viewer_background' ), flip_background_boolean, 'draw_tags_hover_in_media_viewer_background' )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'draw file information (top) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_top_hover_in_media_viewer_background' ), flip_background_boolean, 'draw_top_hover_in_media_viewer_background' )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'draw ratings and locations (top-right) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_top_right_hover_in_media_viewer_background' ), flip_background_boolean, 'draw_top_right_hover_in_media_viewer_background' )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'draw notes (right) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_notes_hover_in_media_viewer_background' ), flip_background_boolean, 'draw_notes_hover_in_media_viewer_background' )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'draw index text (bottom-right) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_bottom_right_index_in_media_viewer_background' ), flip_background_boolean, 'draw_bottom_right_index_in_media_viewer_background' )
-
-        ClientGUIMenus.AppendSeparator( menu )
+        window_menu = ClientGUIMenus.GenerateMenu( menu )
         
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'hover window pop-in requires window focus', 'Should the hover windows be able to pop-in even when the window is in the background?', new_options.GetBoolean( 'hover_windows_need_window_focus_to_pop_in' ), flip_background_boolean, 'hover_windows_need_window_focus_to_pop_in' )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'pop-in tags hover window on mouseover', 'Enable the tags hover window.', not new_options.GetBoolean( 'disable_tags_hover_in_media_viewer' ), flip_background_boolean, 'disable_tags_hover_in_media_viewer' )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'pop-in ratings and locations hover window on mouseover', 'Enable the ratings hover window.', not new_options.GetBoolean( 'disable_top_right_hover_in_media_viewer' ), flip_background_boolean, 'disable_top_right_hover_in_media_viewer' )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'pop-in notes hover window on mouseover', 'Enable the notes hover window.', not new_options.GetBoolean( 'disable_notes_hover_in_media_viewer' ), flip_background_boolean, 'disable_notes_hover_in_media_viewer' )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'pin the duplicates hover window so it is always visible', 'Ensure the special duplicates hover window is always visible in the duplicates filter.', new_options.GetBoolean( 'hover_window_duplicates_always_on_top' ), flip_background_boolean, 'hover_window_duplicates_always_on_top' )
-
-        ClientGUIMenus.AppendSeparator( menu )
+        ClientGUIMenus.AppendMenuCheckItem( window_menu, 'always on top', 'Toggle whether this window is always on top.', self._window_always_on_top, self._FlipCanvasAlwaysOnTop )
+        ClientGUIMenus.AppendMenuCheckItem( window_menu, 'remove titlebar/frame', 'Toggle the OS frame of this window.', self._window_hide_frame, self._FlipHideWindowFrame )
         
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'apply image ICC Profile colour adjustments', 'Set whether images with ICC Profiles should have them applied. This may be useful to flip back and forth if you are in the duplicate filter.', new_options.GetBoolean( 'do_icc_profile_normalisation' ), self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_FLIP_ICC_PROFILE_APPLICATION ) )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'draw transparency as checkerboard in media viewer', 'Set whether to draw transparency as something that stands out more.', new_options.GetBoolean( 'draw_transparency_checkerboard_media_canvas' ), self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_MEDIA_VIEWER ) )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'draw transparency as checkerboard in media viewer (duplicate filter)', 'Set whether to draw transparency as something that stands out more in the duplicate filter.', new_options.GetBoolean( 'draw_transparency_checkerboard_media_canvas_duplicates' ), self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_MEDIA_VIEWER_DUPLICATE_FILTER ) )
-        ClientGUIMenus.AppendMenuCheckItem( menu, 'instead of checkerboard, use a bright greenscreen', 'Set whether to draw transparency as something that stands out more.', new_options.GetBoolean( 'draw_transparency_checkerboard_as_greenscreen' ), self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_GREENSCREEN ) )
+        ClientGUIMenus.AppendSeparator( window_menu )
+        
+        checkbox_manager = ClientGUICommon.CheckboxManagerOptions( 'always_start_media_viewers_always_on_top' )
+        ClientGUIMenus.AppendMenuCheckItem( window_menu, 'always start new media viewers always on top', 'Set whether all new media viewers should start in this state.', checkbox_manager.GetCurrentValue(), checkbox_manager.Invert )
+        
+        checkbox_manager = ClientGUICommon.CheckboxManagerOptions( 'always_start_media_viewers_frameless' )
+        ClientGUIMenus.AppendMenuCheckItem( window_menu, 'always start new media viewers without titlebar/frame', 'Set whether all new media viewers should start in this state.', checkbox_manager.GetCurrentValue(), checkbox_manager.Invert )
+        
+        ClientGUIMenus.AppendMenu( menu, window_menu, 'window' )
+        
+        #
+        
+        hovers_menu = ClientGUIMenus.GenerateMenu( menu )
+        
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'draw tags (left) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_tags_hover_in_media_viewer_background' ), flip_background_boolean, 'draw_tags_hover_in_media_viewer_background' )
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'draw file information (top) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_top_hover_in_media_viewer_background' ), flip_background_boolean, 'draw_top_hover_in_media_viewer_background' )
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'draw ratings and locations (top-right) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_top_right_hover_in_media_viewer_background' ), flip_background_boolean, 'draw_top_right_hover_in_media_viewer_background' )
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'draw notes (right) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_notes_hover_in_media_viewer_background' ), flip_background_boolean, 'draw_notes_hover_in_media_viewer_background' )
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'draw index text (bottom-right) in the background', 'Draw a copy of the respective hover window\'s text in the background of the media viewer canvas.', new_options.GetBoolean( 'draw_bottom_right_index_in_media_viewer_background' ), flip_background_boolean, 'draw_bottom_right_index_in_media_viewer_background' )
+        
+        ClientGUIMenus.AppendSeparator( hovers_menu )
+        
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'hover window pop-in requires window focus', 'Should the hover windows be able to pop-in even when the window is in the background?', new_options.GetBoolean( 'hover_windows_need_window_focus_to_pop_in' ), flip_background_boolean, 'hover_windows_need_window_focus_to_pop_in' )
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'pop-in tags hover window on mouseover', 'Enable the tags hover window.', not new_options.GetBoolean( 'disable_tags_hover_in_media_viewer' ), flip_background_boolean, 'disable_tags_hover_in_media_viewer' )
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'pop-in ratings and locations hover window on mouseover', 'Enable the ratings hover window.', not new_options.GetBoolean( 'disable_top_right_hover_in_media_viewer' ), flip_background_boolean, 'disable_top_right_hover_in_media_viewer' )
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'pop-in notes hover window on mouseover', 'Enable the notes hover window.', not new_options.GetBoolean( 'disable_notes_hover_in_media_viewer' ), flip_background_boolean, 'disable_notes_hover_in_media_viewer' )
+        ClientGUIMenus.AppendMenuCheckItem( hovers_menu, 'pin the duplicates hover window so it is always visible', 'Ensure the special duplicates hover window is always visible in the duplicates filter.', new_options.GetBoolean( 'hover_window_duplicates_always_on_top' ), flip_background_boolean, 'hover_window_duplicates_always_on_top' )
+        
+        ClientGUIMenus.AppendMenu( menu, hovers_menu, 'hovers' )
+        
+        #
+        
+        rendering_menu = ClientGUIMenus.GenerateMenu( menu )
+        
+        ClientGUIMenus.AppendMenuCheckItem( rendering_menu, 'apply image ICC Profile colour adjustments', 'Set whether images with ICC Profiles should have them applied. This may be useful to flip back and forth if you are in the duplicate filter.', new_options.GetBoolean( 'do_icc_profile_normalisation' ), self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_FLIP_ICC_PROFILE_APPLICATION ) )
+        ClientGUIMenus.AppendMenuCheckItem( rendering_menu, 'draw transparency as checkerboard in media viewer', 'Set whether to draw transparency as something that stands out more.', new_options.GetBoolean( 'draw_transparency_checkerboard_media_canvas' ), self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_MEDIA_VIEWER ) )
+        ClientGUIMenus.AppendMenuCheckItem( rendering_menu, 'draw transparency as checkerboard in media viewer (duplicate filter)', 'Set whether to draw transparency as something that stands out more in the duplicate filter.', new_options.GetBoolean( 'draw_transparency_checkerboard_media_canvas_duplicates' ), self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_MEDIA_VIEWER_DUPLICATE_FILTER ) )
+        ClientGUIMenus.AppendMenuCheckItem( rendering_menu, 'instead of checkerboard, use a bright greenscreen', 'Set whether to draw transparency as something that stands out more.', new_options.GetBoolean( 'draw_transparency_checkerboard_as_greenscreen' ), self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_FLIP_TRANSPARENCY_CHECKERBOARD_GREENSCREEN ) )
+        
+        ClientGUIMenus.AppendMenu( menu, rendering_menu, 'rendering' )
         
         CGC.core().PopupMenu( self, menu )
         
@@ -1317,27 +1355,28 @@ class CanvasHoverFrameTop( CanvasHoverFrame ):
         ClientGUIMenus.AddLastClickMemory( menu )
         
         # TODO: fix this up to have an optional second callable on menu items for right-click
+        # and clean up the lambda/indent garbage
         
         ClientGUIMenus.AppendMenuItem( menu, 'resize to fit', 'Resize the window to fit the media without changing anything else.', lambda: ( self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_VIEWER_CENTER ) )
-                                                                                                                                if HG.last_mouse_click_button != QC.Qt.MouseButton.RightButton 
+                                                                                                                                if ClientGUIMenus.LAST_MOUSE_CLICK_BUTTON != QC.Qt.MouseButton.RightButton 
                                                                                                                                 else self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA ) ) ) )
         
         ClientGUIMenus.AppendSeparator( menu )
         
         ClientGUIMenus.AppendMenuItem( menu, 'resize to 50%', 'Zoom the media to 50% and resize the window to fit it.', lambda: ( self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED_VIEWER_CENTER, 0.5 ) )
-                                                                                                                                if HG.last_mouse_click_button != QC.Qt.MouseButton.RightButton
+                                                                                                                                if ClientGUIMenus.LAST_MOUSE_CLICK_BUTTON != QC.Qt.MouseButton.RightButton
                                                                                                                                 else self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED, 0.5 ) ) ) )
         ClientGUIMenus.AppendMenuItem( menu, 'resize to 75%', 'Zoom the media to 75% and resize the window to fit it.', lambda: ( self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED_VIEWER_CENTER, 0.75  ) )
-                                                                                                                                if HG.last_mouse_click_button != QC.Qt.MouseButton.RightButton
+                                                                                                                                if ClientGUIMenus.LAST_MOUSE_CLICK_BUTTON != QC.Qt.MouseButton.RightButton
                                                                                                                                 else self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED, 0.75 ) ) ) )
         ClientGUIMenus.AppendMenuItem( menu, 'resize to 100%', 'Zoom the media to 100% and resize the window to fit it.', lambda: ( self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED_VIEWER_CENTER, 1.0  ) )
-                                                                                                                                if HG.last_mouse_click_button != QC.Qt.MouseButton.RightButton
+                                                                                                                                if ClientGUIMenus.LAST_MOUSE_CLICK_BUTTON != QC.Qt.MouseButton.RightButton
                                                                                                                                 else self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED, 1.0 ) ) ) )
         ClientGUIMenus.AppendMenuItem( menu, 'resize to 150%', 'Zoom the media to 150% and resize the window to fit it.', lambda: ( self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED_VIEWER_CENTER, 1.5  ) )
-                                                                                                                                if HG.last_mouse_click_button != QC.Qt.MouseButton.RightButton
+                                                                                                                                if ClientGUIMenus.LAST_MOUSE_CLICK_BUTTON != QC.Qt.MouseButton.RightButton
                                                                                                                                 else self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED, 1.5 ) ) ) )
         ClientGUIMenus.AppendMenuItem( menu, 'resize to 200%', 'Zoom the media to 200% and resize the window to fit it.', lambda: ( self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED_VIEWER_CENTER, 2.0  ) )
-                                                                                                                                if HG.last_mouse_click_button != QC.Qt.MouseButton.RightButton
+                                                                                                                                if ClientGUIMenus.LAST_MOUSE_CLICK_BUTTON != QC.Qt.MouseButton.RightButton
                                                                                                                                 else self.sendApplicationCommand.emit( CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESIZE_WINDOW_TO_MEDIA_ZOOMED, 2.0 ) ) ) )
         
         #append a non clickable note that says you can right click the above options to choose to center the media first or not. so if you left-click it jumps the media back to window center before resizing, if you right click it jumps the window to where the canvas media location is onscreen and resizes there
@@ -1509,8 +1548,6 @@ class CanvasHoverFrameTopDuplicatesFilter( CanvasHoverFrameTopNavigable ):
     
     def _ShowZoomOptionsMenu( self ):
         
-        new_options = CG.client_controller.new_options
-        
         menu = ClientGUIMenus.GenerateMenu( self )
         
         ClientGUIMenus.AppendMenuItem( menu, 'recenter media', 'Restore the media position to the center point.', self.sendApplicationCommand.emit, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_RESET_PAN_TO_CENTER ) )
@@ -1562,8 +1599,23 @@ class CanvasHoverFrameTopNavigableList( CanvasHoverFrameTopNavigable ):
         
         QP.AddToLayout( self._top_left_hbox, self._random_button, CC.FLAGS_CENTER_PERPENDICULAR )
         
+        self._slideshow_button = ClientGUICommon.IconButton( self, CC.global_icons().slideshow, self._ShowSlideshowMenu )
+        
+        self._slideshow_button.setToolTip( 'slideshow' )
+        self._slideshow_button.setFocusPolicy( QC.Qt.FocusPolicy.TabFocus )
+        
+        QP.AddToLayout( self._top_left_hbox, self._slideshow_button, CC.FLAGS_CENTER_PERPENDICULAR )
+        
     
-
+    def _ShowSlideshowMenu( self ):
+        
+        menu = ClientGUIMenus.GenerateMenu( self )
+        
+        ClientGUICanvasMenus.AppendSlideshowMenu( self._my_canvas, menu, self._my_canvas.SlideshowIsRunning(), do_submenu = False )
+        
+        CGC.core().PopupMenu( self, menu )
+        
+    
 
 class InboxIconClickFilter( QC.QObject ):
     

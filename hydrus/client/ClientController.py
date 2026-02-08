@@ -711,7 +711,7 @@ class Controller( HydrusController.HydrusController ):
             
             self._splash = ClientGUISplash.FrameSplash( self, title, self.frame_splash_status )
             
-        except:
+        except Exception as e:
             
             HydrusData.Print( 'There was an error trying to start the splash screen!' )
             
@@ -984,7 +984,7 @@ class Controller( HydrusController.HydrusController ):
                 
                 pass
                 
-            except:
+            except Exception as e:
                 
                 self._ReportShutdownException()
                 
@@ -1879,30 +1879,31 @@ class Controller( HydrusController.HydrusController ):
         
         from hydrus.client.gui import ClientGUIDialogsQuick
         
-        with QP.DirDialog( self.gui, 'Select backup location.' ) as dlg:
+        try:
             
-            if dlg.exec() == QW.QDialog.DialogCode.Accepted:
-                
-                path = dlg.GetPath()
-                
-                text = 'Are you sure you want to restore a backup from "{}"?'.format( path )
-                text += '\n' * 2
-                text += 'Everything in your current database will be deleted!'
-                text += '\n' * 2
-                text += 'The gui will shut down, and then it will take a while to complete the restore. Once it is done, the client will restart.'
-                
-                result = ClientGUIDialogsQuick.GetYesNo( self.gui, text )
-                
-                if result == QW.QDialog.DialogCode.Accepted:
-                    
-                    self._restore_backup_path = path
-                    self._doing_fast_exit = False
-                    HG.do_idle_shutdown_work = False
-                    HG.restart = True
-                    
-                    self.Exit()
-                    
-                
+            path = ClientGUIDialogsQuick.PickDirectory( self.gui, 'Select backup location.' )
+            
+        except HydrusExceptions.CancelledException:
+            
+            return
+            
+        
+        text = 'Are you sure you want to restore a backup from "{}"?'.format( path )
+        text += '\n' * 2
+        text += 'Everything in your current database will be deleted!'
+        text += '\n' * 2
+        text += 'The gui will shut down, and then it will take a while to complete the restore. Once it is done, the client will restart.'
+        
+        result = ClientGUIDialogsQuick.GetYesNo( self.gui, text )
+        
+        if result == QW.QDialog.DialogCode.Accepted:
+            
+            self._restore_backup_path = path
+            self._doing_fast_exit = False
+            HG.do_idle_shutdown_work = False
+            HG.restart = True
+            
+            self.Exit()
             
         
     
@@ -1928,7 +1929,7 @@ class Controller( HydrusController.HydrusController ):
                 # noinspection PyUnresolvedReferences
                 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID( 'hydrus network client' )
                 
-            except:
+            except Exception as e:
                 
                 pass
                 
@@ -2173,7 +2174,7 @@ class Controller( HydrusController.HydrusController ):
                                 ipv4_port = reactor.listenTCP( port, http_factory, interface = ipv4_interface )
                                 
                             
-                        except:
+                        except Exception as e:
                             
                             if ipv6_port is None:
                                 
@@ -2322,7 +2323,7 @@ class Controller( HydrusController.HydrusController ):
                     
                     self.frame_splash_status.SetSubtext( '' )
                     
-                except:
+                except Exception as e:
                     
                     self._ReportShutdownException()
                     
@@ -2336,7 +2337,7 @@ class Controller( HydrusController.HydrusController ):
                 
                 self.SetRunningTwistedServices( [] )
                 
-            except:
+            except Exception as e:
                 
                 pass # sometimes this throws a wobbler, screw it
                 

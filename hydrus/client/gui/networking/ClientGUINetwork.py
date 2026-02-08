@@ -20,6 +20,7 @@ from hydrus.client import ClientDefaults
 from hydrus.client import ClientGlobals as CG
 from hydrus.client.gui import ClientGUIDragDrop
 from hydrus.client.gui import ClientGUICharts
+from hydrus.client.gui import ClientGUIDialogsFiles
 from hydrus.client.gui import ClientGUIDialogsMessage
 from hydrus.client.gui import ClientGUIDialogsQuick
 from hydrus.client.gui import ClientGUIFunctions
@@ -405,7 +406,7 @@ class EditNetworkContextCustomHeadersPanel( ClientGUIScrolledPanels.EditPanel ):
         key = 'Authorization'
         value = 'Basic dXNlcm5hbWU6cGFzc3dvcmQ='
         approved = ClientNetworkingDomain.VALID_APPROVED
-        reason = 'EXAMPLE REASON: HTTP header login--needed for access.'
+        reason = ''
         
         with ClientGUITopLevelWindowsPanels.DialogEdit( self, 'edit header' ) as dlg:
             
@@ -432,7 +433,7 @@ class EditNetworkContextCustomHeadersPanel( ClientGUIScrolledPanels.EditPanel ):
         
         pretty_key_value = key + ': ' + value
         
-        pretty_approved = ClientNetworkingDomain.valid_str_lookup[ approved ]
+        pretty_approved = ClientNetworkingDomain.valid_desc_lookup[ approved ]
         
         pretty_reason = reason
         
@@ -447,7 +448,7 @@ class EditNetworkContextCustomHeadersPanel( ClientGUIScrolledPanels.EditPanel ):
         
         pretty_network_context = network_context.ToString()
         
-        pretty_approved = ClientNetworkingDomain.valid_str_lookup[ approved ]
+        pretty_approved = ClientNetworkingDomain.valid_desc_lookup[ approved ]
         
         sort_tuple = ( pretty_network_context, ( key, value ), pretty_approved, reason )
         
@@ -529,10 +530,12 @@ class EditNetworkContextCustomHeadersPanel( ClientGUIScrolledPanels.EditPanel ):
             
             for a in ( ClientNetworkingDomain.VALID_APPROVED, ClientNetworkingDomain.VALID_DENIED, ClientNetworkingDomain.VALID_UNKNOWN ):
                 
-                self._approved.addItem( ClientNetworkingDomain.valid_str_lookup[ a], a )
+                self._approved.addItem( ClientNetworkingDomain.valid_desc_lookup[ a ], a )
                 
             
             self._reason = QW.QLineEdit( self )
+            
+            self._reason.setPlaceholderText( 'Login header--needed for access.' )
             
             width = ClientGUIFunctions.ConvertTextToPixelWidth( self._reason, 60 )
             self._reason.setMinimumWidth( width )
@@ -551,13 +554,17 @@ class EditNetworkContextCustomHeadersPanel( ClientGUIScrolledPanels.EditPanel ):
             
             vbox = QP.VBoxLayout()
             
-            QP.AddToLayout( vbox, self._network_context, CC.FLAGS_EXPAND_PERPENDICULAR )
-            QP.AddToLayout( vbox, self._key, CC.FLAGS_EXPAND_PERPENDICULAR )
-            QP.AddToLayout( vbox, self._value, CC.FLAGS_EXPAND_PERPENDICULAR )
-            QP.AddToLayout( vbox, self._approved, CC.FLAGS_EXPAND_PERPENDICULAR )
-            QP.AddToLayout( vbox, self._reason, CC.FLAGS_EXPAND_PERPENDICULAR )
+            rows = []
             
-            self.widget().setLayout( vbox )
+            rows.append( ( 'network context', self._network_context ) )
+            rows.append( ( 'header key', self._key ) )
+            rows.append( ( 'header value', self._value ) )
+            rows.append( ( 'current state', self._approved ) )
+            rows.append( ( 'description (optional)', self._reason ) )
+            
+            gridbox = ClientGUICommon.WrapInGrid( self, rows )
+            
+            self.widget().setLayout( gridbox )
             
         
         def GetValue( self ):
@@ -1411,6 +1418,14 @@ class ReviewNetworkSessionsPanel( ClientGUIScrolledPanels.ReviewPanel ):
         
         vbox = QP.VBoxLayout()
         
+        warning = 'WARNING: Never use important accounts with hydrus. Hydrus does not store credentials securely. Also, if you accidentally download too much at once, or a site suddenly changes their policies, a linked account can get banned. If you link an account to hydrus, always use a throwaway account you don\'t care much about.'
+        
+        warning_st = ClientGUICommon.BetterStaticText( self, warning )
+        warning_st.setAlignment( QC.Qt.AlignmentFlag.AlignCenter )
+        warning_st.setWordWrap( True )
+        warning_st.setObjectName( 'HydrusWarning' )
+        
+        QP.AddToLayout( vbox, warning_st, CC.FLAGS_EXPAND_PERPENDICULAR )
         QP.AddToLayout( vbox, listctrl_panel, CC.FLAGS_EXPAND_BOTH_WAYS )
         QP.AddToLayout( vbox, self._show_empty, CC.FLAGS_ON_RIGHT )
         
@@ -1495,7 +1510,7 @@ class ReviewNetworkSessionsPanel( ClientGUIScrolledPanels.ReviewPanel ):
                 expiry = max( expires_numbers )
                 pretty_expiry = HydrusTime.TimestampToPrettyExpires( expiry )
                 
-            except:
+            except Exception as e:
                 
                 pretty_expiry = 'Unusual expiry numbers'
                 
@@ -1533,7 +1548,7 @@ class ReviewNetworkSessionsPanel( ClientGUIScrolledPanels.ReviewPanel ):
                 
                 expiry = max( expires_numbers )
                 
-            except:
+            except Exception as e:
                 
                 expiry = -1
                 
@@ -1575,7 +1590,7 @@ class ReviewNetworkSessionsPanel( ClientGUIScrolledPanels.ReviewPanel ):
     # this method is thanks to a user's contribution!
     def _ImportCookiesTXT( self ):
         
-        with QP.FileDialog( self, 'select cookies.txt', acceptMode = QW.QFileDialog.AcceptMode.AcceptOpen ) as f_dlg:
+        with ClientGUIDialogsFiles.FileDialog( self, 'select cookies.txt', acceptMode = QW.QFileDialog.AcceptMode.AcceptOpen ) as f_dlg:
             
             if f_dlg.exec() == QW.QDialog.DialogCode.Accepted:
                 
@@ -1962,7 +1977,7 @@ class ReviewNetworkSessionPanel( ClientGUIScrolledPanels.ReviewPanel ):
     # these methods are thanks to user's contribution!
     def _ImportCookiesTXT( self ):
         
-        with QP.FileDialog( self, 'select cookies.txt', acceptMode = QW.QFileDialog.AcceptMode.AcceptOpen ) as f_dlg:
+        with ClientGUIDialogsFiles.FileDialog( self, 'select cookies.txt', acceptMode = QW.QFileDialog.AcceptMode.AcceptOpen ) as f_dlg:
             
             if f_dlg.exec() == QW.QDialog.DialogCode.Accepted:
                 

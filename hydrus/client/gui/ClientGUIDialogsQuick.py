@@ -105,6 +105,43 @@ def run_auto_yes_no_gubbins( dlg: QW.QDialog, time_to_fire, original_title, acti
     job = CG.client_controller.CallLaterQtSafe( dlg, 0.0, 'dialog auto yes/no fire', qt_fire_button )
     
 
+LAST_FOLDER_SELECTED = None
+
+def PickDirectory( parent: QW.QWidget, message: str, starting_dir_path: str | None = None ):
+    
+    global LAST_FOLDER_SELECTED
+    
+    if starting_dir_path is None:
+        
+        if LAST_FOLDER_SELECTED is None:
+            
+            starting_dir_path = HC.BASE_DIR
+            
+        else:
+            
+            starting_dir_path = LAST_FOLDER_SELECTED
+            
+        
+    
+    options = QW.QFileDialog.Option.ShowDirsOnly | QW.QFileDialog.Option.DontResolveSymlinks
+    
+    if CG.client_controller.new_options.GetBoolean( 'use_qt_file_dialogs' ):
+        
+        options |= QW.QFileDialog.Option.DontUseNativeDialog
+        
+    
+    path = QW.QFileDialog.getExistingDirectory( parent, caption = message, dir = starting_dir_path, options = options )
+    
+    if path == '':
+        
+        raise HydrusExceptions.CancelledException()
+        
+    
+    LAST_FOLDER_SELECTED = path
+    
+    return path
+    
+
 # TODO: check_for_cancelled aiiiiieeeeeeeeee
 def GetYesNo( win: QW.QWidget, message: str, title = 'Are you sure?', yes_label = 'yes', no_label = 'no', auto_yes_time = None, auto_no_time = None, check_for_cancelled = False ):
     

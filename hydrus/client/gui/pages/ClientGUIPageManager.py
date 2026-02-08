@@ -14,7 +14,10 @@ from hydrus.client.importing import ClientImportGallery
 from hydrus.client.importing import ClientImportLocal
 from hydrus.client.importing import ClientImportSimpleURLs
 from hydrus.client.importing import ClientImportWatchers
-from hydrus.client.importing.options import FileImportOptions
+from hydrus.client.importing.options import FileFilteringImportOptions
+from hydrus.client.importing.options import FileImportOptionsLegacy
+from hydrus.client.importing.options import LocationImportOptions
+from hydrus.client.importing.options import PrefetchImportOptions
 from hydrus.client.media import ClientMedia
 from hydrus.client.metadata import ClientMetadataMigration
 from hydrus.client.search import ClientSearchFileSearchContext
@@ -107,7 +110,7 @@ def CreatePageManagerImportSimpleDownloader():
     return page_manager
     
 
-def CreatePageManagerImportHDD( paths, file_import_options: FileImportOptions.FileImportOptions, metadata_routers: collections.abc.Collection[ ClientMetadataMigration.SingleFileMetadataRouter ], paths_to_additional_service_keys_to_tags, delete_after_success ):
+def CreatePageManagerImportHDD( paths, file_import_options: FileImportOptionsLegacy.FileImportOptionsLegacy, metadata_routers: collections.abc.Collection[ ClientMetadataMigration.SingleFileMetadataRouter ], paths_to_additional_service_keys_to_tags, delete_after_success ):
     
     page_manager = CreatePageManager( 'import', ClientGUIPagesCore.PAGE_TYPE_IMPORT_HDD )
     
@@ -249,26 +252,28 @@ class PageManager( HydrusSerialisable.SerialisableBase ):
                 
                 paths = [ path_info for ( path_type, path_info ) in paths_info if path_type != 'zip' ]
                 
-                exclude_deleted = advanced_import_options[ 'exclude_deleted' ]
-                preimport_hash_check_type = FileImportOptions.DO_CHECK_AND_MATCHES_ARE_DISPOSITIVE
-                preimport_url_check_type = FileImportOptions.DO_CHECK
-                preimport_url_check_looks_for_neighbour_spam = True
-                allow_decompression_bombs = False
-                min_size = advanced_import_options[ 'min_size' ]
-                max_size = None
-                max_gif_size = None
-                min_resolution = advanced_import_options[ 'min_resolution' ]
-                max_resolution = None
+                prefetch_import_options = PrefetchImportOptions.PrefetchImportOptions()
                 
-                automatic_archive = advanced_import_options[ 'automatic_archive' ]
-                associate_primary_urls = True
-                associate_source_urls = True
+                prefetch_import_options.SetPreImportHashCheckType( PrefetchImportOptions.DO_CHECK_AND_MATCHES_ARE_DISPOSITIVE )
+                prefetch_import_options.SetPreImportURLCheckType( PrefetchImportOptions.DO_CHECK )
+                prefetch_import_options.SetPreImportURLCheckLooksForNeighbourSpam( True )
                 
-                file_import_options = FileImportOptions.FileImportOptions()
+                file_filtering_import_options = FileFilteringImportOptions.FileFilteringImportOptions()
                 
-                file_import_options.SetPreImportOptions( exclude_deleted, preimport_hash_check_type, preimport_url_check_type, allow_decompression_bombs, min_size, max_size, max_gif_size, min_resolution, max_resolution )
-                file_import_options.SetPreImportURLCheckLooksForNeighbourSpam( preimport_url_check_looks_for_neighbour_spam )
-                file_import_options.SetPostImportOptions( automatic_archive, associate_primary_urls, associate_source_urls )
+                file_filtering_import_options.SetAllowsDecompressionBombs( False )
+                file_filtering_import_options.SetExcludesDeleted( advanced_import_options[ 'exclude_deleted' ] )
+                file_filtering_import_options.SetMinSize( advanced_import_options[ 'min_size' ] )
+                file_filtering_import_options.SetMinResolution( advanced_import_options[ 'min_resolution' ] )
+                
+                location_import_options = LocationImportOptions.LocationImportOptions()
+                
+                location_import_options.SetAutomaticallyArchives( advanced_import_options[ 'automatic_archive' ] )
+                
+                file_import_options = FileImportOptionsLegacy.FileImportOptionsLegacy()
+                
+                file_import_options.SetPrefetchImportOptions( prefetch_import_options )
+                file_import_options.SetFileFilteringImportOptions( file_filtering_import_options )
+                file_import_options.SetLocationImportOptions( location_import_options )
                 
                 paths_to_tags = { path : { bytes.fromhex( service_key ) : tags for ( service_key, tags ) in additional_service_keys_to_tags } for ( path, additional_service_keys_to_tags ) in paths_to_tags.items() }
                 
@@ -429,7 +434,7 @@ class PageManager( HydrusSerialisable.SerialisableBase ):
                     namespaces = [ n for ( t, n ) in old_collect if t == 'namespace' ]
                     rating_service_keys = [ bytes.fromhex( r ) for ( t, r ) in old_collect if t == 'rating' ]
                     
-                except:
+                except Exception as e:
                     
                     namespaces = []
                     rating_service_keys = []
@@ -459,7 +464,7 @@ class PageManager( HydrusSerialisable.SerialisableBase ):
                     
                     file_service_key = bytes.fromhex( file_service_key_encoded )
                     
-                except:
+                except Exception as e:
                     
                     file_service_key = CC.HYDRUS_LOCAL_FILE_STORAGE_SERVICE_KEY
                     
@@ -723,7 +728,7 @@ class PageManager( HydrusSerialisable.SerialisableBase ):
                     
                     file_import_options = source.GetFileImportOptions()
                     
-                    location_context = FileImportOptions.GetRealFileImportOptions( file_import_options, FileImportOptions.IMPORT_TYPE_LOUD ).GetDestinationLocationContext()
+                    location_context = FileImportOptionsLegacy.GetRealFileImportOptions( file_import_options, FileImportOptionsLegacy.IMPORT_TYPE_LOUD ).GetLocationImportOptions().GetDestinationLocationContext()
                     
                     return location_context
                     

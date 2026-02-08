@@ -14,7 +14,7 @@ class HydrusException( Exception ):
                     
                     s.append( str( arg ) )
                     
-                except:
+                except Exception as e:
                     
                     s.append( repr( arg ) )
                     
@@ -95,6 +95,7 @@ class FirewallException( NetworkInfrastructureException ): pass
 class RouterException( NetworkInfrastructureException ): pass
 class CloudFlareException( NetworkInfrastructureException ): pass
 class BandwidthException( NetworkInfrastructureException ): pass
+class CensorshipException( NetworkInfrastructureException ): pass
 class ServerException( NetworkInfrastructureException ): pass
 class ServerBusyException( NetworkInfrastructureException ): pass
 

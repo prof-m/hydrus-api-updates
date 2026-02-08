@@ -82,6 +82,7 @@ def ProcessStartingAction( db_dir, action ):
             
         
     
+
 def ShutdownSiblingInstance( db_dir ):
     
     port_found = False
@@ -114,7 +115,7 @@ def ShutdownSiblingInstance( db_dir ):
             
             server_name = r.headers[ 'Server' ]
             
-        except:
+        except Exception as e:
             
             text = 'Could not contact existing server\'s port ' + str( port ) + '!'
             text += '\n'
@@ -492,7 +493,7 @@ class Controller( HydrusController.HydrusController ):
                             
                             ipv4_port = reactor.listenSSL( port, http_factory, context_factory )
                             
-                        except:
+                        except Exception as e:
                             
                             if ipv6_port is None:
                                 
@@ -596,7 +597,7 @@ class Controller( HydrusController.HydrusController ):
             
             self.SetRunningTwistedServices( [] )
             
-        except:
+        except Exception as e:
             
             pass # sometimes this throws a wobbler, screw it
             

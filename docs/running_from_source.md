@@ -258,18 +258,36 @@ There are three special external libraries. You just have to get them and put th
 
 The setup will ask you some questions. Just type the letters it asks for and hit enter. Most users are looking at the (s)imple setup, but if your situation is unusual (e.g. very old/new python), try the (a)dvanced, which will walk you through the main decisions. Once ready, it should take a minute to download its packages and a couple minutes to install them. Do not close it until it is finished installing everything and says 'Done!'. If it seems like it hung, just give it time to finish.
 
-If something messes up, or you want to make a different decision, just run the setup script again and it will clear out and reinstall everything. Everything these scripts do ends up in the 'venv' directory, so you can also just delete that folder to 'uninstall' the venv. It should _just work_ on most normal computers, but let me know if you have any trouble.
+This setup creates a copy of your system python in a folder called 'venv'. Is it completely non-destructive and undoable. If something messes up, or you want to make a different decision, just run the setup script again and it will clear out and reinstall everything. You can also just delete that folder to 'uninstall' the venv.
+
+The setup should _just work_ on most normal computers, but very old or new systems or unusual architectures may run into trouble. Let me know if you have any problems.
 
 Then run the 'setup_help' script to build the help. This isn't necessary, but it is nice to have it built locally. You can run this again at any time to update to the current help.
 
 #### Running it
 
+!!! note "Run the launch script, not the .py"
+    Do not run `hydrus_client.py`, because you will get errors about missing libraries (probably `yaml`/`qtpy`). You will be running `hydrus_client.bat/.sh/.command` instead.
+    
+    We have just set up a "venv", which is not the same as your system python, and so in order to run `hydrus_client.py`, we need to "activate" the venv first to load all the libraries we just installed with the `setup_venv` script. Feel free to check the contents of the launch scripts--they are very simple--to see how it works.
+
 === "Windows"
 
-    Run 'hydrus_client.bat' to start the client.
+    Run `hydrus_client.bat` to start the client.
 
 === "Linux"
 
+    !!! warning "Wayland (and MPV)"
+        Unfortunately, hydrus has several bad bugs in Wayland. The mpv window will often not embed properly into the media viewer, menus and windows may position on the wrong screen, and the taskbar icon may not work at all. Newer versions are less buggy, but some of these issues, particularly mpv embedding, seem to be intractable.
+        
+        User testing suggests that the best solution for now is just to launch the program in X11, and I now encourage this for all Wayland users. Launching with the environment variable `QT_QPA_PLATFORM=xcb` (e.g. by putting `export QT_QPA_PLATFORM=xcb` in a boot script that launches `hydrus_client`) should do it. The 'xcb' should force X11.
+        
+        It does not work for everyone, though. If it fails, another user says setting `WAYLAND_DISPLAY=` (as in setting it to nothing) or unsetting it entirely with `unset WAYLAND_DISPLAY`, which forces hydrus (and its embedded mpv windows) to use Xwayland, is another solution. You might need to do `sudo apt install xwayland` first.
+        
+        You should be able to see which window manager hydrus thinks it is running under in `help->about`, on the "Qt" row.
+        
+        I expect to revisit this question in future versions of Qt and Wayland, and I plan to try a different mpv embedding technique that I know Wayland should support--we'll see if the situation stabilises.
+    
     !!! note "Qt compatibility"
         
         If the program fails to run, and from terminal it says something like this:
@@ -288,24 +306,17 @@ Then run the 'setup_help' script to build the help. This isn't necessary, but it
         
         Or check your OS's package manager.
         
+        One user reports that Fedora might need `libxkbcommon` too.
+        
         If you still have trouble with the default Qt6 version, try running setup_venv again and choose a different version. There are several to choose from, including (w)riting a custom version. Check the advanced requirements.txts files in `install_dir/static/requirements/advanced` for more info, and you can also work off this list: [PySide6](https://pypi.org/project/PySide6/#history)
         
     
-    ??? warning "Wayland (and MPV)"
-        Unfortunately, hydrus has several bad bugs in Wayland. The mpv window will often not embed properly into the media viewer, menus and windows may position on the wrong screen, and the taskbar icon may not work at all.
-        
-        User testing suggests that the best solution for now is just to launch the program in X11, and I now encourage this for all Wayland users. Launching with the environment variable `QT_QPA_PLATFORM=xcb` (e.g. by putting `export QT_QPA_PLATFORM=xcb` in a copy of `hydrus_client.sh` called `hydrus_client-user.sh`) should do it. The 'xcb' should force X11.
-        
-        It does not work for everyone, though. If it fails, another user says that also setting `WAYLAND_DISPLAY=` (as in setting it to nothing) or unsetting it entirely with `unset WAYLAND_DISPLAY`, which forces hydrus (and its embedded mpv windows) to use Xwayland, is another solution. You might need to do `sudo apt install xwayland` first.
-        
-        I expect to revisit this question in future versions of Qt and Wayland--we'll see if the situation stabilises.
-    
-    Run 'hydrus_client.sh' to start the client. Don't forget to `chmod +x hydrus_client.sh` if you need it.
+    Run `hydrus_client.sh` to start the client. Don't forget to `chmod +x hydrus_client.sh` if you need it.
     
 
 === "macOS"
 
-    Run 'hydrus_client.command' to start the client. Don't forget to `chmod +x hydrus_client.command` and `sudo xattr -rd com.apple.quarantine hydrus_client.command` if you need it.
+    Run `hydrus_client.command` to start the client. Don't forget to `chmod +x hydrus_client.command` and `sudo xattr -rd com.apple.quarantine hydrus_client.command` if you need it.
 
 The first start will take a little longer (it has to compile all the code into something your computer understands). Once up, it will operate just like a normal build with the same folder structure and so on.
 

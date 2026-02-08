@@ -2,7 +2,6 @@ import collections
 import collections.abc
 import decimal
 import fractions
-import itertools
 import os
 import struct
 import sys
@@ -94,7 +93,7 @@ def CleanRunningFile( db_path, instance ):
         
         os.remove( path )
         
-    except:
+    except Exception as e:
         
         pass
         
@@ -259,18 +258,6 @@ def GetTypeName( obj_type ):
         
     
 
-def IterateHexPrefixes():
-    
-    hex_chars = '0123456789abcdef'
-    
-    for ( one, two ) in itertools.product( hex_chars, hex_chars ):
-        
-        prefix = one + two
-        
-        yield prefix
-        
-    
-
 def LastShutdownWasBad( db_path, instance ):
     
     path = os.path.join( db_path, instance + '_running' )
@@ -302,7 +289,7 @@ def Print( text ):
         
         print( str( text ) )
         
-    except:
+    except Exception as e:
         
         print( repr( text ) )
         
@@ -478,7 +465,7 @@ def BaseToHumanBytes( size, sig_figs = 3 ):
             d = d.quantize( 0 )
             
         
-    except:
+    except Exception as e:
         
         # blarg
         pass

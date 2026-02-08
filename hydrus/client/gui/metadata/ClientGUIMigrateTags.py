@@ -13,6 +13,7 @@ from hydrus.client import ClientConstants as CC
 from hydrus.client import ClientGlobals as CG
 from hydrus.client import ClientLocation
 from hydrus.client import ClientMigration
+from hydrus.client.gui import ClientGUIDialogsFiles
 from hydrus.client.gui import ClientGUIDialogsMessage
 from hydrus.client.gui import ClientGUIDialogsQuick
 from hydrus.client.gui import ClientGUIFunctions
@@ -517,7 +518,13 @@ class MigrateTagsPanel( ClientGUIScrolledPanels.ReviewPanel ):
             extra_info = ''
             
         
-        title = f'taking {source_content_statuses_strings[ content_statuses ]} {HC.content_type_string_lookup[ content_type ]}{extra_info} from "{source.GetName()}" and {destination_action_strings[ content_action ]} "{destination.GetName()}"'
+        content_statuses_string = source_content_statuses_strings[ tuple( content_statuses ) ]
+        content_type_string = HC.content_type_string_lookup[ content_type ]
+        source_name = source.GetName()
+        destination_action_string = destination_action_strings[ content_action ]
+        destination_name = destination.GetName()
+        
+        title = f'taking {content_statuses_string} {content_type_string}{extra_info} from "{source_name}" and {destination_action_string} "{destination_name}"'
         
         message = 'Migrations can make huge changes. They can be cancelled early, but any work they do cannot always be undone. Please check that this summary looks correct:'
         message += '\n' * 2
@@ -555,7 +562,7 @@ class MigrateTagsPanel( ClientGUIScrolledPanels.ReviewPanel ):
         
         message = 'Select the destination location for the Archive. Existing Archives are also ok, and will be appended to.'
         
-        with QP.FileDialog( self, message = message, acceptMode = QW.QFileDialog.AcceptMode.AcceptSave, default_filename = 'archive.db', fileMode = QW.QFileDialog.FileMode.AnyFile ) as dlg:
+        with ClientGUIDialogsFiles.FileDialog( self, message = message, acceptMode = QW.QFileDialog.AcceptMode.AcceptSave, default_filename = 'archive.db', fileMode = QW.QFileDialog.FileMode.AnyFile ) as dlg:
             
             if dlg.exec() == QW.QDialog.DialogCode.Accepted:
                 
@@ -586,7 +593,7 @@ class MigrateTagsPanel( ClientGUIScrolledPanels.ReviewPanel ):
                             
                             self._migration_destination_hash_type_choice.setEnabled( False )
                             
-                        except:
+                        except Exception as e:
                             
                             pass
                             
@@ -641,7 +648,7 @@ class MigrateTagsPanel( ClientGUIScrolledPanels.ReviewPanel ):
         
         message = 'Select the Archive to pull data from.'
         
-        with QP.FileDialog( self, message = message, acceptMode = QW.QFileDialog.AcceptMode.AcceptOpen ) as dlg:
+        with ClientGUIDialogsFiles.FileDialog( self, message = message, acceptMode = QW.QFileDialog.AcceptMode.AcceptOpen ) as dlg:
             
             if dlg.exec() == QW.QDialog.DialogCode.Accepted:
                 

@@ -35,6 +35,206 @@
             <h1 id="changelog"><a href="#changelog">changelog</a></h1>
             <ul>
                 <li>
+                    <h2 id="version_658"><a href="#version_658">version 658</a></h2>
+                    <ul>
+                        <li><h3>misc</h3></li>
+                        <li>fixed an exclusive-to-inclusive system predicate parsing regression, for instance the input `system:filetype is not x` was parsing as `system:filetype is x`, which was because of a logical hole in a recent rewrite</li>
+                        <li>added 'Active Search Predicates list height' to `options-&gt;file search`. this is the list _above_ the tag autocomplete input on normal search boxes. defaults to 6 (was previously 8 due to weirdness)</li>
+                        <li>tag lists no longer default to min height 8 rows but 1. let me know if anything sizes crazy now</li>
+                        <li>fixed the `help-&gt;about` db transaction period, which was typoed and calculating off the wrong number</li>
+                        <li>the 'don't use important accounts with hydrus' warning is clarified and unified in the downloader help, login dialog, and now session cookies dialog</li>
+                        <li>the media viewer right-click menu now has a 'player' sub-menu at the end that says what player (mpv, QtMediaPlayer, Hydrus Native stuff) is currently in view. might be worth tucking this into a deeper advanced/maintenance/debug menu somewhere in a future reshuffle, but for now it is there</li>
+                        <li><h3>QtMediaPlayer (and an mpv thing)</h3></li>
+                        <li>fixed a 'C++ object already deleted' instability error with the new GraphicsView QtMediaPlayer. I had this a couple of times in devving but needed to tighten up how some mouse event hacks were owned and destroyed</li>
+                        <li>fixed an UI hang that could sometimes occur in PySide6 when opening a new media viewer when the preview viewer already has a QtMediaPlayer loaded</li>
+                        <li>added `TEST: Use the same mpv player through media transitions` and `TEST: Use the same QtMediaPlayer through media transitions` options to `options-&gt;media playback`. previously, I would always create or swap to a different player when navigating from video to video, because re-using the same guy was super flickery or crash city. things are better now and I'm open to testing it more</li>
+                        <li>added `TEST: Use OpenGL Window in QtMediaPlayer` to `options-&gt;media playback`. maybe it improves performance for big vids? I noticed it can cause some initial window-level flickering in Windows, but it is worth trying in different situations</li>
+                        <li><h3>boring QtMediaPlayer cleanup</h3></li>
+                        <li>the new GraphicsView test now loops natively and tracks 'num plays' through some fudgy maths (previously it hooked into the video 'end; stop' statechange and manually did 'seek 0; play'). I've had some reports about the program hanging on video end-loop, so let's see if this helps that</li>
+                        <li>made the mouse-move event hack a little safer</li>
+                        <li>rewrote some media destruction signals and moved QtMediaPlayer destruction responsibility from the GUI to the MediaContainer itself. there's no more weird reparenting</li>
+                        <li>QtMediaPlayers are now cleaned up more aggressively. generally a 500ms timer instead of 5s</li>
+                        <li><h3>boring cleanup</h3></li>
+                        <li>broke `options-&gt;media playback` into sections and fixed some layout issues</li>
+                        <li>fixed a bit of foolishness that was causing the `hydrus_test_boot.py` unit test script to always exit( 1 ) even when everything was OK</li>
+                        <li>relatedly, replaced all lazy `except:` handling with `except Exception as e:`</li>
+                        <li>if the duplicates filter fails to generate a visual duplicate comparison, the error now only makes one popup per program boot. it still spams some basic 'hash x failed' stuff to log so we can debug the issue</li>
+                        <li>cleaned up a little 'menu last click' global out of HG</li>
+                        <li>added a 'Run the launch script, not the .py' note to the 'running from source' help</li>
+                        <li><h3>boring import options overhaul</h3></li>
+                        <li>broke the 'file filtering import options' (stuff like allowed filetypes and min/max filesize) out of 'file import options (legacy)' just like I did presentation and prefetch import options the other week. the legacy object now holds a 'file filtering import options' sub-object in prep for the conversion to the new options structure</li>
+                        <li>did the same for the 'location import options' (stuff like where to put the file and auto-archive/url options)</li>
+                        <li>wrote an edit panel for 'file filtering import options'</li>
+                        <li>did the same for 'location import options'</li>
+                        <li>fixed the red warning text about an invalid, empty import destination context to now appear properly and instantly on dialog load, if it boots with an invalid destination context</li>
+                        <li>'associate primary/source urls' checkboxes are no longer hidden behind advanced mode</li>
+                        <li>the prefetch import options are now in their own edit panel</li>
+                        <li>the presentation and notes import options panels are now QWidgets not ScrollingEditPanels, which will fix some jank layout we've seen here</li>
+                        <li>fixed some layout expanding issues in the file import options panel</li>
+                        <li>network job and file import statuses now work with a file filtering import options object for their filtering decisions, not a file import options</li>
+                        <li>importers now consult a location import options for pre-work destination validity checks</li>
+                        <li>updated the unit tests for the new 'file filtering import options' object</li>
+                        <li>updated the unit tests for the 'location import options' object</li>
+                        <li>wrote some very basic prefitch import options unit tests</li>
+                    </ul>
+                </li>
+                <li>
+                    <h2 id="version_657"><a href="#version_657">version 657</a></h2>
+                    <ul>
+                        <li><h3>misc</h3></li>
+                        <li>the 'edit header' dialog panel, where you configure custom http headers, is given a usability pass. this thing never got out of debug-tier and none of the widgets were labelled lol. it has a grid with labels and some nicer strings for the enigmatic 'approved' status</li>
+                        <li>added some safety code for the new `tldextract` test I added last week. one of the calls I make is newer than I expected (issue #1953)</li>
+                        <li><h3>QtMediaPlayer</h3></li>
+                        <li>I revisited the QtMediaPlayer, which is an experimental alternate to the mpv embed that I haven't touched in ages. I may have strongly succeeded</li>
+                        <li>I am rolling out a new type of QtMediaPlayer. the old one is called (Test 1 - VideoWidget); this new one is (Test 2 - GraphicsView). both are listed in the `options-&gt;media playback` settings for audio/video/animation. this new GraphicsView solution does not have the 'always on top' rendering problem the old one had, meaning the seek bar is shown and behaves properly!! this guy basically looks just like mpv, although it is less customisable and your performance and interpolation quality etc.. may be a little worse (issue #1883)</li>
+                        <li>if you have had trouble with mpv, please try this new GraphicsView player out. I don't know how crashy it is, so brace yourself. I'm interested in performance, errors, what filetypes it cannot handle, which mouse interactions fail to register, anything you think pertinent. if we can nail it down, I can polish all this as the new mpv fallback for macOS and Wayland and anyone else with mpv trouble</li>
+                        <li>one thing I did notice btw is that it spams some debug-warning stuff to your log when it loads files with unusual metadata. I silenced a bunch of it with Qt logging options, but there's more to do</li>
+                        <li>all users can now see the experimental QtMediaPlayer options. previously it was blocked behind source users in advanced mode</li>
+                        <li>the volume button now appears for QtMediaPlayers (although obviously still hidden by the 'on top' behaviour of the old one)</li>
+                        <li>fixed volume application for the experimental QtMediaPlayer--because of a type problem, it was either doing mute at 0 or 100% everywhere else</li>
+                        <li>fixed an unload media bug in the QtMediaPlayer for PyQt6</li>
+                        <li><h3>new hydrus API web-based browser</h3></li>
+                        <li>another user has created a web portal for your hydrus install! check it out here: https://hyaway.com/ | documentation https://docs.hyaway.com/ | github https://github.com/hyaway/hyaway</li>
+                        <li>I don't know much about it, but it looks cool and is open source. you can use the hosted version at that site or set up your own instance. if you want to browse your client from your phone, check it out</li>
+                        <li>I added this to the collection of other Client API tools on the landing page here https://hydrusnetwork.github.io/hydrus/client_api.html</li>
+                        <li><h3>Client API rating colours</h3></li>
+                        <li>the `Services Object` in the Client API now provides the pen and brush colours for different rating service states, in #ffffff format, and bools for `show_in_thumbnail` and `show_in_thumbnail_even_if_null`, and for numerical ratings, a convenience `allows_zero`.</li>
+                        <li>updated the unit tests to check for this and the help to talk about it</li>
+                        <li>the Client API version is now 87</li>
+                        <li><h3>python 3.14 and opencv</h3></li>
+                        <li>tl;dr: you can now get setup with hydrus on the (new) python 3.14 easily--just do `setup_venv` as normal and select `(a)dvanced` and then `(t)est` for everything</li>
+                        <li>it has been previously tricky to run hydrus on python 3.14 because of some funny library stuff. you could fudge things manually, but it wasn't nice, there were image rendering bugs, and the `setup_venv` script didn't have a path for it. this situation improved in just the last week, which is good because some users on bleeding edge OSes are getting rollouts of 3.14 right now (issue #1950)</li>
+                        <li>the 'test' version of `opencv-python-headless` is bumped from `4.12.0.88` to `4.13.0.90`, which is the first version of OpenCV that is ok with the newer numpy</li>
+                        <li>the 'normal' vs 'test' OpenCV requirement bundles now include `numpy`, with respective versions of `~2.3.1` and `2.4.1`</li>
+                        <li>as a side thing, the new 'test' Qt, `PySide6 6.10.1`, seems to be the first version that installs nicely on 3.14</li>
+                        <li>all the `setup_venv` scripts now ask if you want the `(n)ormal` rather than the `(n)ew` version of things. 'new' was originally to contrast to the 'old' version, but these days it is more confusing vs 'test'</li>
+                        <li>all the `setup_venv` scripts now direct users on Py 3.14 to go in (a)dvanced mode. get the (t)est versions of things and you should be good, but I'll be interested to hear where not</li>
+                        <li>all the `setup_venv` scripts now temporarily ask a fourth question in (a)dvanced mode, for the new domain-parsing `tldextract` library, which I added test code for last week</li>
+                        <li>as a side thing, in the `setup_venv.bat` script, the secret (d)ev mode that adds some unit test and build gubbins now allows you (me) to make the (a)dvanced choices</li>
+                        <li>I also maintain a 3.14 test environment here in my IDE. I can do 3.10-3.14 and PyQt6 and regularly do simple tests in all of them, so I hope we'll catch bigger version-specific issues, and we'll know when 3.10 is no longer supportable</li>
+                        <li><h3>network domain management overhaul, mostly boring</h3></li>
+                        <li>a push on better per-domain settings and status tracking went well. like with other recent rewrites, I've mostly just done behind the scenes prep work, with no large changes yet, but I'm feeling good about it. in the end of this, I hope to have domain-specific settings for most of the stuff in the 'general' panel of `options-&gt;connection`. again, like with other settings overhauls, I'm planning to have a global default which you then override with custom settings for a particular domain if you wish. ideally we'll have favourites/templates and the ability to bundle these settings with a downloader, like you can headers and bandwidth rules</li>
+                        <li>the 'halt new jobs as long as this many network infrastructure errors on their domain' setting now applies to all levels of the domain. if `site.com` gets a bunch of connection errors, a request to `subdomain.site.com` will now also wait on that option. the domain vs second-level domain logic here was previously spotty, and some subdomain stuff wasn't waiting when it was supposed to</li>
+                        <li>sketched out `DomainSettings` and `DomainStatus` objects to track the settings and basic event history on a per-domain basis in an easily future-extendable way. they don't work yet, but I'm prepping for it</li>
+                        <li>wrote some unit tests for the new objects</li>
+                        <li>domain errors are now reported with an event type, in prep for the new objects</li>
+                        <li><h3>boring code cleanup</h3></li>
+                        <li>retired my older directory picker dialog in favour of my newer 'quick' select, replacing use in the file import window; move media files; repair file locations; clear orphan files; review services manual export update files; manual import update files; select backup location; restore backup location</li>
+                        <li>updated my 'quick' directory select call to remember the last directory selected this session (defaulting to install dir for now), and if the caller doesn't have a specific location in mind, to use that last selection as the starting dir of the next dialog open. it also handles cancel results a little nicer</li>
+                        <li>removed one or two 'is the user in Qt5?' checks with the QtMediaPlayer work. I'm not sure when, but I think I'll purge the rest of these completely in the next month or so, probably at the next 'future build' commit. it is basically time to move on</li>
+                    </ul>
+                </li>
+                <li>
+                    <h2 id="version_656"><a href="#version_656">version 656</a></h2>
+                    <ul>
+                        <li><h3>misc</h3></li>
+                        <li>when you edit an ongoing tag autocomplete input to have or not have a leading hyphen, the results should now switch more reliably between `skirt` and `-skirt`. the logic was patchy here, previously, updating itself on certain unnamespaced text but not namespaced, and I believe in some cases in-construction OR predicates could be negated, but it should now, on all updates, work on all the correct predicates</li>
+                        <li>all file and directory pickers across the program now no longer realise any symlinks you select. I never knew this was default behaviour, but now, if you tell 'move media files...' or similar to use a symlink, it will result in that dir you select, not the realised endpoint</li>
+                        <li>if a file storage location involves a symlink, the 'move media files' dialog and related log entries will now say `/some/path (Real path: /other/path)`. if there is a problem determining the path, it will say `/some/path (Real path: Could not determine real path--check log!)`</li>
+                        <li>the example urls list in the 'edit page parser' dialog now has copy/paste buttons for quicker in and out when you just need to grab some urls to test with etc.. . I will brush up this list object more in future and do duplicate removal and right-click menus and stuff</li>
+                        <li>when hydrus does a free space check on your temp dir before a big db job, it now recognises the `SQLITE_TMPDIR` environment variable, which overrides and tells SQLite to use a different path, and it will check and talk about this guy instead. if SQLite is indeed redirected with `SQLITE_TMPDIR`, this is now stated in `help-&gt;about`</li>
+                        <li>if duplicates auto-resolution fails to generate visual data for a file, it now prints a message to the log about the bad file hash, considers the file pair not duplicate, and no longer halts the whole system (issue #1950)</li>
+                        <li><h3>import options overhaul</h3></li>
+                        <li>I have planned out the overhaul to import options. we will migrate to a system that is similar to the current url-type-based  tag/note import options customisation but for all ways of importing and all import options types. the edit panels will get a strong usability and clarity pass, all gathered in one panel, with favourites/templates for quick load of preferred options, and the import options will be split into more granular types so you can, say, easily set up a specific tag blacklist while keeping default tag parsing rules. the current expected default categories will be global, local import, gallery, subscription, watcher, specific url classes, and the new import options will be: prefetch logic, file filtering, tag filtering, locations, tags, notes, presentation. should be easier to add a 'ratings options' to this sort of thing, too, in future</li>
+                        <li>I did a load of boring behind the scenes cleanup this week to move this forward. nothing works different, but the shape of things is altering--</li>
+                        <li>I wrote a new import options container object that will dynamically hold a swiss-cheese template of various options for a particular layer of the options context, and a manager to hold the defaults and serve the appropriate specific import options based on who is asking</li>
+                        <li>the 'file import options' across the program is converted to 'file import options (legacy)'</li>
+                        <li>same deal for 'tag import options'</li>
+                        <li>wrote a 'prefetch import options'</li>
+                        <li>the hash-check, url-check, and url-neighbour logic is migrated inside a file import options to this new prefetch import options, and all importers and options now interact with the prefetch import options, care-of the file import options. same thing will happen in future for the file filter stuff ('don't allow x filetype' etc...) and the locations stuff ('put it here and archive it'); and on the tag side for blacklist vs tag destination options; before I migrate all those newly decoupled lego blocks up one level to the new container class with, fingers crossed, minimum fuss</li>
+                        <li>the edit file import options now breaks the prefetch logic out to a new UI box. these options are no longer hidden behind advanced mode, but for this transition period I will now start the box collapsed and have a scary warning label</li>
+                        <li>now I have thought about this and planned it, I feel fairly good. I think I am 20% done and believe I can keep chipping away like this for a smooth migration, no gigantic changes at any stage</li>
+                        <li><h3>client api</h3></li>
+                        <li>the `/add_tags/search_tags` Client API request now delivers a very simple `autocomplete_text` Object that says what actual text the user entered and whether it was inclusive (i.e. started with a hyphen or not). I considered adding some other A/C logic like 'is explicit wildcard' and 'what automatic autocomplete wildcars are being added' to this structure, but that stuff is a little messy so I'll KISS for now</li>
+                        <li>the unit tests now check this</li>
+                        <li>Client API version is now 86</li>
+                        <li><h3>other boring cleanup</h3></li>
+                        <li>moved file and directory picker buttons out of `QtPorting` and harmonised the 'quick, select an existing dir' routine to `DialogsQuick`</li>
+                        <li>moved the richer file and directory dialogs out of `QtPorting`</li>
+                        <li><h3>new domain logic prep</h3></li>
+                        <li>if the client has access to the library `tldextract`, it now defers to this for generating the 'second level domain' of an URL (or, more strictly, detecting the 'public suffix domain'). this is the `blah.com` style of domain, with no subdomains. at the moment, hydrus naively collapses a `blah.co.uk` to the unhelpful `co.uk` for various domain-management purposes (you may see this under _review session cookies_), which doesn't cause any errors but is ugly and does cause bloated sessions that collect all cookies under this TLD into one bucket and forces everything under the domain to share bandwidth tokens on this false second-level umbrella. this new library navigates this and produces the `blah.co.uk` result as desired</li>
+                        <li>`help-&gt;about` now lists `tldextract` under the 'optional libraries' section</li>
+                        <li>this code does nothing yet for almost all users. in the near future I will roll the library into the requirements for source users and the future build so we can test for issues. I have written a failsafe to try to not break any logins (anyone who has login cookies in a 'co.uk' style session entry will keep using that bucket after the planned transition), but we'll see if anything else pops up</li>
+                        <li><h3>future build committed</h3></li>
+                        <li>This release commits the changes tested with the recent future build. The test went well, and there are no special instructions for the update. Source users are encouraged to rebuild their venvs this week. Update as normal, and you will get--</li>
+                        <li>- `requests` (networking library) `2.32.4` to `2.32.5`</li>
+                        <li>- `mpv` (the python wrapper that talks to the dll) `1.0.7` to `1.0.8`</li>
+                        <li>- `PySide6` (Qt) normal `6.8.3` to `6.9.3`</li>
+                        <li>- `PySide6` (Qt) test, for source users, `6.9.3` to `6.10.1`</li>
+                    </ul>
+                </li>
+                <li>
+                    <h2 id="version_655"><a href="#version_655">version 655</a></h2>
+                    <ul>
+                        <li><h3>misc</h3></li>
+                        <li>for all the normal page sidebars, the sections above the taglist (e.g. 'search' on a search page, or 'gallery downloader' and 'highlighted query' on a gallery download page) are now collapsible (there's a little up/down arrow button in the corner). if you want to do some taglist work, you can now make it really big. this is just a hacky test though, so let me know how it feels</li>
+                        <li>the 'eye' icon in the media viewer now has 'always start new media viewers always on top' (which works nice generally) and 'always start new media viewers without titlebar/frame' (which is a little flickery since I schedule it to happen 100ms after window init because of technical gubbins). neither plays very well with start-fullscreen mode. I also reworded the titlebar option logical grammar from 'show titlebar (default on)' to 'hide titlebar/frame (default off)'</li>
+                        <li>the 'pause network/subs' menu items in the system tray icon are now checkbox items. the ugly 'unpause x' grammar is gone!</li>
+                        <li>if you do not have a file, the file info lines that appear in the thumbnail flyout menu and the main gui status, which normally say stuff like 'imported 3 days ago' now explicitly say "you do not have this file, (but you did once|but your client has heard a bit about it|and you have never had it)". I hope this will forestall some confusion these advanced media results cause (usually under a 'all known files' search)</li>
+                        <li>the unhelpful and incorrect 'archived: unknown time' statement no longer appears for non-local files</li>
+                        <li>if a site delivers `451: Unavailable For Legal Reasons`, the file and gallery download objects now catch this and assign an 'ignored' state with an appropriate note. previously this was counting as an ugly uncaught error and causing subs to break and so on (this caused my 'do not use NGUGs here' 'edit subscription' warning label last week). if you have been hit by this (seems like danbooru is doing it?), I don't know if it is because of your region or certain queries (e.g. 'do not post' artists); let me know how the workflow is with these results now being ignored--maybe we want this to be an outright errorthat will auto-pause subs and such, just with the now-nicer error description? I've been thinking about making subs cleverer about region-based captcha blocks, recognising that this is a temporary block that should cause hydrus to stop talking to the domain entirely, but not considering it an error _per se_ and backing out of the current job non-destructively so it can try resuming where it left off again later, so if this is part of that, we'll want to throw it in the mix</li>
+                        <li><h3>Client API</h3></li>
+                        <li>with thanks to a user for the skeleton, I fleshed out and added `/manage_pages/get_media_viewers` to the Client API. this thing fetches all the current open media viewers, tells you an id and type for each, and says what media is currently in view. this also clears issue #1583</li>
+                        <li>wrote a (bad) unit test for this and some documentation</li>
+                        <li>Client API version is now 84</li>
+                        <li><h3>Client API deprecation</h3></li>
+                        <li>I am formalising my Client API deprecation schedule since I have been procrastinating on this cleanup yet don't want to suddenly delete something mysteriously two years after the fact</li>
+                        <li>if you send `hide_service_keys_tags=false` to a `file_metadata` Client API call, the user now gets a `FutureWarning` deprecation log entry. the behaviour this parameter supports will be deleted on v668 (three months from now)</li>
+                        <li>same for the `set_user_agent` command. you'll get a `FutureWarning` if a script calls it, and it will be deleted in v668</li>
+                        <li>`hide_x=true` is ugly logic, so we'll go with `use_deprecated_x=false` default going forward</li>
+                        <li>I am going to add a `use_deprecated_services_structure=false` default to the `services` call in v668, to hide the old service structure. it will similarly get a warning and a three month timeout, to be deleted in v681</li>
+                        <li><h3>boring file storage cleanup</h3></li>
+                        <li>an early 'umbrella' experiment for dynamic file storage prefix-length is removed and some validity checking is simplified</li>
+                        <li>in prep for the move to a storage system with three-character prefix (4096 folders), moved a bunch of prefix-handling to a central location and made it length-agnostic</li>
+                        <li>KISSed some of this code. it is still a bit of a mess though tbh</li>
+                        <li>wrote a method to 'granularise' a file storage structure, moving a base location from subfolders in the form '/f83' to '/f83/0' - '/f83/f', with file migration and handling weird files and stuff. when we move to three-character storage, we'll not only be granularising our main storage, but we'll want to do this one-time manually on our backups as well</li>
+                        <li><h3>other boring stuff</h3></li>
+                        <li>the 'edit default duplicate metadata merge options' button in the duplicates page is shuffled down to the 'duplicate filter' box</li>
+                        <li>fixed a quiet layout sizing warning in the petition processing page when the checkboxlists have no content</li>
+                        <li>added a note to 'help my db is broke.txt' about a clone crashing</li>
+                        <li><h3>future build</h3></li>
+                        <li>I am making another future build this week. This is a special build with new libraries that I would like advanced users to test out so I know they are safe to fold into the normal release.</li>
+                        <li>in the release post, I will link to this alternate build. if you are experienced and would like to help me, please check it out</li>
+                        <li>special notes for this time: nothing crazy, we'll see if the new Qt kicks up a fuss anywhere strange</li>
+                        <li>the specific changes this week are--</li>
+                        <li>`requests` `2.32.4` to `2.32.5`</li>
+                        <li>`mpv` (the python wrapper that talks to the dll) `1.0.7` to `1.0.8`</li>
+                        <li>`PySide6` (Qt) normal `6.8.3` to `6.9.3`</li>
+                        <li>`PySide6` (Qt) test `6.9.3` to `6.10.1`</li>
+                    </ul>
+                </li>
+                <li>
+                    <h2 id="version_654"><a href="#version_654">version 654</a></h2>
+                    <ul>
+                        <li><h3>command palette</h3></li>
+                        <li>reorganised the command palette options panel and updated how the character search threshold works. you can now say 'show all my x initially' for a particular search result type and then set a character limit for the general searches. the default and min value for the character search threshold is now 1</li>
+                        <li><h3>slideshow</h3></li>
+                        <li>the slideshow menu in the media viewer has been shuffled a bit to tuck everything together</li>
+                        <li>the slideshow menu now also appears in the top hover of the normal 'browser' media viewer, in a new icon button beside the 'move randomly' button</li>
+                        <li>the sildeshow menu now has a 'slideshows move randomly' option. this thing is a global setting, mostly a test. let me know how it works out</li>
+                        <li><h3>misc</h3></li>
+                        <li>the manage subscription dialog now nags you with red text if you set a downloader that appears to fetch from multiple sites (i.e. it is an NGUG that has multiple domains in its example urls). although it sounds temptingly convenient to set up a sub with a multi-site NGUG, they don't work so great like this, so the panel now says so and tells you what to do instead</li>
+                        <li>added a `When finishing archive/delete filtering, delay activation of multiple deletion choice buttons` checkbox, default True, to `options-&gt;files and trash`, so you can now disable the 1.2 second delay on the delete/commit buttons when there are multiple deletion choices</li>
+                        <li>made new svg icons for 'image', (which turns up when hydrus can't find a thumb for an image file), 'images' which turns up in the command palette as a 'media' proxy for media menu results, and the new 'slideshow' icon button. I like how these look at high res, but the smaller ones look bleh tbh. we'll have a review of all my new svgs when I finally add icon button sizing options and boost the default up a bit</li>
+                        <li>`options-&gt;media viewer` now has split up mouse and seek bar settings. the seek bar panel has a new `Seek bar full-height pop-in requires window focus` checkbox, which is now default **True**</li>
+                        <li>fixed svg resolution fetching (and probably all sorts of related svg gubbins) in PyQt6 (this is an alternate version of Qt some source users may be running)</li>
+                        <li><h3>boring and cleanup</h3></li>
+                        <li>overhauled how the command palette does some search string handling and cleaned up a couple of logic things like whitespace no longer counts as a new char, etc..</li>
+                        <li>the code behind the slideshow is all cleaner and decoupled application command stuff</li>
+                        <li>I went through and renamed some 'scanbar' labels to the more canonical 'seek bar'</li>
+                        <li>the 'eye' icon button in the media viewer top hover is recollected into window/hovers/rendering submenu categories</li>
+                        <li>fixed the vacuum command to no longer check the temp dir for free space in the lower-db call--the newer 'vacuum into' command we use no longer needs a temp copy</li>
+                        <li>might have fixed a bad 'Go!' confirmation dialog string generation in `migrate tags` that hits users for whom Mercury is in retrograde</li>
+                        <li>improved the error handling for when my new async subprocess reader tries to read from a process that terminates early</li>
+                        <li>fixed some unit test 'call after' job scheduling stuff with the same anti-deadlock handling I added to the main client a while ago</li>
+                        <li><h3>admin and docs</h3></li>
+                        <li>created a hydrus_dev@proton.me email address and added it to all my contact lists. please feel free to email me there if you prefer--I'll check it as often as my gmail</li>
+                        <li>to stop new users missing it, the 'Wayland' warning box in the Linux install and source help now starts uncollapsed</li>
+                        <li>added a note about `libxkbcommon` for X11 support on Fedora too</li>
+                        <li>wrote a 'help I had a file identifier missing error.txt' document for the db dir to handle the 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa34bf0b9abf7683e3955781212d0d1899' emergency hash-recovery situation</li>
+                    </ul>
+                </li>
+                <li>
                     <h2 id="version_653"><a href="#version_653">version 653</a></h2>
                     <ul>
                         <li><h3>misc</h3></li>
@@ -18038,7 +18238,7 @@
                         <li>collapsed some of the helter-skelter db code in prep for future improvements</li>
                         <li>moved daemon code to separate files</li>
                         <li>silenced server upnp errors</li>
-                        <li>all except: continue lines are banished!</li>
+                        <li>all except Exception as e: continue lines are banished!</li>
                         <li>cleaned up some miscellaneous exception code</li>
                         <li>cleaned some ugly behind the scenes a/c dropdown button code</li>
                         <li>did some general code cleanup</li>

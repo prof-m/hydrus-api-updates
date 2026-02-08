@@ -42,7 +42,7 @@ import sqlite3
 # the tag import options widget when people sync with these archives.
 
 
-# And also feel free to contact me directly at hydrus.admin@gmail.com if you need help.
+# And also feel free to contact me directly at hydrus_dev@proton.me if you need help.
 
 HASH_TYPE_MD5 = 0 # 16 bytes long
 HASH_TYPE_SHA1 = 1 # 20 bytes long
@@ -256,8 +256,14 @@ class HydrusTagArchive( object ):
     
     def DeleteTags( self, hash ):
         
-        try: hash_id = self._GetHashId( hash, read_only = True )
-        except: return
+        try:
+            
+            hash_id = self._GetHashId( hash, read_only = True )
+            
+        except Exception as e:
+            
+            return
+            
         
         self._c.execute( 'DELETE FROM mappings WHERE hash_id = ?;', ( hash_id, ) )
         
@@ -276,7 +282,7 @@ class HydrusTagArchive( object ):
             
             tag_id = self._GetTagId( tag, read_only = True )
             
-        except:
+        except Exception as e:
             
             return set()
             
@@ -349,7 +355,7 @@ class HydrusTagArchive( object ):
             
             hash_id = self._GetHashId( hash, read_only = True )
             
-        except:
+        except Exception as e:
             
             return set()
             
@@ -365,7 +371,7 @@ class HydrusTagArchive( object ):
             
             return True
             
-        except:
+        except Exception as e:
             
             return False
             

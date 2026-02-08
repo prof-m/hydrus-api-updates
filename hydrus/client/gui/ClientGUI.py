@@ -38,6 +38,7 @@ from hydrus.client.gui import ClientGUIAboutWindow
 from hydrus.client.gui import ClientGUIAsync
 from hydrus.client.gui import ClientGUICharts
 from hydrus.client.gui import ClientGUIDialogs
+from hydrus.client.gui import ClientGUIDialogsFiles
 from hydrus.client.gui import ClientGUIDialogsManage
 from hydrus.client.gui import ClientGUIDialogsMessage
 from hydrus.client.gui import ClientGUIDialogsQuick
@@ -57,8 +58,9 @@ from hydrus.client.gui import ClientGUITopLevelWindowsPanels
 from hydrus.client.gui import QLocator
 from hydrus.client.gui import ClientGUILocatorSearchProviders
 from hydrus.client.gui import QtPorting as QP
-from hydrus.client.gui.canvas import ClientGUICanvasMedia
+from hydrus.client.gui.canvas import ClientGUICanvasFrame
 from hydrus.client.gui.canvas import ClientGUIMPV
+from hydrus.client.gui.canvas import ClientGUIQtMediaPlayer
 from hydrus.client.gui.exporting import ClientGUIExport
 from hydrus.client.gui.importing import ClientGUIImportFolders
 from hydrus.client.gui.media import ClientGUIMediaControls
@@ -91,6 +93,7 @@ from hydrus.client.gui.services import ClientGUIModalServersideServiceActions
 from hydrus.client.gui.services import ClientGUIServersideServices
 from hydrus.client.gui.widgets import ClientGUICommon
 from hydrus.client.media import ClientMediaResult
+from hydrus.client.media import ClientMediaResultAPI
 from hydrus.client.metadata import ClientContentUpdates
 from hydrus.client.metadata import ClientTags
 from hydrus.client.networking import ClientNetworkingFunctions
@@ -527,7 +530,7 @@ class FrameGUI( CAC.ApplicationCommandProcessorMixin, ClientGUITopLevelWindows.M
         self._pages_count_dirty = True
         self._pages_history_dirty = True
         
-        self._canvas_frames = [] # Keep references to canvas frames so they won't get garbage collected (canvas frames don't have a parent)
+        self._canvas_frames: list[ ClientGUICanvasFrame.CanvasFrame ] = [] # Keep references to canvas frames so they won't get garbage collected (canvas frames don't have a parent)
         
         self._persistent_mpv_widgets = []
         self._isolated_mpv_widgets = []
@@ -681,8 +684,7 @@ class FrameGUI( CAC.ApplicationCommandProcessorMixin, ClientGUITopLevelWindows.M
             titleHeight = 36,
             primaryTextWidth = 430,
             secondaryTextWidth = 280,
-            maxVisibleItemCount = 16,
-            numCharsForResultsThreshold = command_palette_num_chars_for_results_threshold
+            maxVisibleItemCount = 16
         )
         self._locator_widget.setDefaultStylingEnabled( False )
         self._locator_widget.setLocator( self._locator )
@@ -1083,15 +1085,16 @@ class FrameGUI( CAC.ApplicationCommandProcessorMixin, ClientGUITopLevelWindows.M
         
         if result == 'move':
             
-            with QP.DirDialog( self, 'Select location.' ) as dlg_3:
+            try:
                 
-                if dlg_3.exec() == QW.QDialog.DialogCode.Accepted:
-                    
-                    path = dlg_3.GetPath()
-                    
-                    self._controller.CallToThread( client_files_manager.ClearOrphans, path )
-                    
+                path = ClientGUIDialogsQuick.PickDirectory( self, 'Select location.' )
                 
+            except HydrusExceptions.CancelledException:
+                
+                return
+                
+            
+            self._controller.CallToThread( client_files_manager.ClearOrphans, path )
             
         elif result == 'delete':
             
@@ -1214,7 +1217,7 @@ class FrameGUI( CAC.ApplicationCommandProcessorMixin, ClientGUITopLevelWindows.M
             
             if result == 'file':
                 
-                with QP.FileDialog( self, 'select where to save content', default_filename = 'output.txt', acceptMode = QW.QFileDialog.AcceptMode.AcceptSave, fileMode = QW.QFileDialog.FileMode.AnyFile ) as f_dlg:
+                with ClientGUIDialogsFiles.FileDialog( self, 'select where to save content', default_filename = 'output.txt', acceptMode = QW.QFileDialog.AcceptMode.AcceptSave, fileMode = QW.QFileDialog.FileMode.AnyFile ) as f_dlg:
                     
                     if f_dlg.exec() == QW.QDialog.DialogCode.Accepted:
                         
@@ -1485,14 +1488,14 @@ class FrameGUI( CAC.ApplicationCommandProcessorMixin, ClientGUITopLevelWindows.M
         
         job_status.SetStatusTitle( 'sub gap downloader test' )
         
-        from hydrus.client.importing.options import FileImportOptions
+        from hydrus.client.importing.options import FileImportOptionsLegacy
         
-        file_import_options = FileImportOptions.FileImportOptions()
+        file_import_options = FileImportOptionsLegacy.FileImportOptionsLegacy()
         file_import_options.SetIsDefault( True )
         
-        from hydrus.client.importing.options import TagImportOptions
+        from hydrus.client.importing.options import TagImportOptionsLegacy
         
-        tag_import_options = TagImportOptions.TagImportOptions( is_default = True )
+        tag_import_options = TagImportOptionsLegacy.TagImportOptionsLegacy( is_default = True )
         
         from hydrus.client.importing.options import NoteImportOptions
         
@@ -1759,7 +1762,7 @@ QMenuBar::item { padding: 2px 8px; margin: 0px; }'''
             
             hash = bytes.fromhex( file_hash_hex )
             
-        except:
+        except Exception as e:
             
             ClientGUIDialogsMessage.ShowCritical( self, 'Error', 'Could not parse that hash!' )
             
@@ -2200,7 +2203,7 @@ ATTACH "client.mappings.db" as external_mappings;'''
                             
                             update = HydrusSerialisable.CreateFromNetworkBytes( update_network_bytes )
                             
-                        except:
+                        except Exception as e:
                             
                             num_errors += 1
                             
@@ -2256,15 +2259,16 @@ ATTACH "client.mappings.db" as external_mappings;'''
         
         ClientGUIDialogsMessage.ShowInformation( self, message )
         
-        with QP.DirDialog( self, 'Select location.' ) as dlg:
+        try:
             
-            if dlg.exec() == QW.QDialog.DialogCode.Accepted:
-                
-                path = dlg.GetPath()
-                
-                self._controller.CallToThread( do_it, path )
-                
+            path = ClientGUIDialogsQuick.PickDirectory( self, 'Select location.' )
             
+        except HydrusExceptions.CancelledException:
+            
+            return
+            
+        
+        self._controller.CallToThread( do_it, path )
         
     
     def _ImportURL(
@@ -4646,8 +4650,6 @@ ATTACH "client.mappings.db" as external_mappings;'''
         
         ClientGUIFunctions.UpdateAppDisplayName()
         
-        self._locator_widget.setNumCharsForResultsThreshold( CG.client_controller.new_options.GetInteger( 'command_palette_num_chars_for_results_threshold' ) )
-        
         self._controller.pub( 'wake_daemons' )
         self.SetStatusBarDirty()
         self._controller.pub( 'refresh_page_name' )
@@ -5291,7 +5293,7 @@ ATTACH "client.mappings.db" as external_mappings;'''
             
             account_key = bytes.fromhex( account_key_hex )
             
-        except:
+        except Exception as e:
             
             ClientGUIDialogsMessage.ShowCritical( self, 'Error', 'Could not parse that account id!' )
             
@@ -5840,7 +5842,7 @@ ATTACH "client.mappings.db" as external_mappings;'''
                     
                     working_now = True
                     
-                except:
+                except Exception as e:
                     
                     pass
                     
@@ -6707,9 +6709,11 @@ ATTACH "client.mappings.db" as external_mappings;'''
         
         from hydrus.client.files.images import ClientVisualDataTuningSuite
         
-        test_dir = QW.QFileDialog.getExistingDirectory( self, '', '' )
-        
-        if test_dir == '':
+        try:
+            
+            test_dir = ClientGUIDialogsQuick.PickDirectory( self, 'select dir' )
+            
+        except HydrusExceptions.CancelledException:
             
             return
             
@@ -6732,9 +6736,11 @@ ATTACH "client.mappings.db" as external_mappings;'''
         
         from hydrus.client.files.images import ClientVisualDataTuningSuite
         
-        test_dir = QW.QFileDialog.getExistingDirectory( self, '', '' )
-        
-        if test_dir == '':
+        try:
+            
+            test_dir = ClientGUIDialogsQuick.PickDirectory( self, 'select dir' )
+            
+        except HydrusExceptions.CancelledException:
             
             return
             
@@ -6923,80 +6929,76 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
         
         ClientGUIDialogsMessage.ShowInformation( self, backup_intro )
         
-        with QP.DirDialog( self, 'Select backup location.' ) as dlg:
+        try:
             
-            if dlg.exec() == QW.QDialog.DialogCode.Accepted:
+            path = ClientGUIDialogsQuick.PickDirectory( self, 'Select backup location.' )
+            
+        except HydrusExceptions.CancelledException:
+            
+            return
+            
+        
+        if path == self._controller.GetDBDir():
+            
+            ClientGUIDialogsMessage.ShowWarning( self, 'That directory is your current database directory! You cannot backup to the same location you are backing up from!' )
+            
+            return
+            
+        
+        if path == existing_backup_path:
+            
+            ClientGUIDialogsMessage.ShowInformation( self, 'The path you chose is your current saved backup path. No changes have been made.' )
+            
+            return
+            
+        
+        if os.path.exists( path ):
+            
+            filenames = os.listdir( path )
+            
+            num_files = len( filenames )
+            
+            if num_files == 0:
                 
-                path = dlg.GetPath()
+                extra_info = 'It looks currently empty, which is great--there is no danger of anything being overwritten.'
                 
-                if path == '':
-                    
-                    return
-                    
+            elif 'client.db' in filenames:
                 
-                if path == self._controller.GetDBDir():
-                    
-                    ClientGUIDialogsMessage.ShowWarning( self, 'That directory is your current database directory! You cannot backup to the same location you are backing up from!' )
-                    
-                    return
-                    
+                extra_info = 'It looks like a client database already exists in the location--be certain that it is ok to overwrite it.'
                 
-                if path == existing_backup_path:
-                    
-                    ClientGUIDialogsMessage.ShowInformation( self, 'The path you chose is your current saved backup path. No changes have been made.' )
-                    
-                    return
-                    
+            else:
                 
-                if os.path.exists( path ):
-                    
-                    filenames = os.listdir( path )
-                    
-                    num_files = len( filenames )
-                    
-                    if num_files == 0:
-                        
-                        extra_info = 'It looks currently empty, which is great--there is no danger of anything being overwritten.'
-                        
-                    elif 'client.db' in filenames:
-                        
-                        extra_info = 'It looks like a client database already exists in the location--be certain that it is ok to overwrite it.'
-                        
-                    else:
-                        
-                        extra_info = 'It seems to have some files already in it--be careful and make sure you chose the correct location.'
-                        
-                    
-                else:
-                    
-                    extra_info = 'The path does not exist yet--it will be created when you make your first backup.'
-                    
+                extra_info = 'It seems to have some files already in it--be careful and make sure you chose the correct location.'
                 
-                text = 'You chose "' + path + '". Here is what I understand about it:'
-                text += '\n' * 2
-                text += extra_info
-                text += '\n' * 2
-                text += 'Are you sure this is the correct directory?'
+            
+        else:
+            
+            extra_info = 'The path does not exist yet--it will be created when you make your first backup.'
+            
+        
+        text = 'You chose "' + path + '". Here is what I understand about it:'
+        text += '\n' * 2
+        text += extra_info
+        text += '\n' * 2
+        text += 'Are you sure this is the correct directory?'
+        
+        result = ClientGUIDialogsQuick.GetYesNo( self, text )
+        
+        if result == QW.QDialog.DialogCode.Accepted:
+            
+            self._new_options.SetNoneableString( 'backup_path', path )
+            self._new_options.SetNoneableInteger( 'last_backup_time', None )
+            
+            text = 'Would you like to create your backup now?'
+            
+            result = ClientGUIDialogsQuick.GetYesNo( self, text )
+            
+            if result == QW.QDialog.DialogCode.Accepted:
                 
-                result = ClientGUIDialogsQuick.GetYesNo( self, text )
+                self._BackupDatabase()
                 
-                if result == QW.QDialog.DialogCode.Accepted:
-                    
-                    self._new_options.SetNoneableString( 'backup_path', path )
-                    self._new_options.SetNoneableInteger( 'last_backup_time', None )
-                    
-                    text = 'Would you like to create your backup now?'
-                    
-                    result = ClientGUIDialogsQuick.GetYesNo( self, text )
-                    
-                    if result == QW.QDialog.DialogCode.Accepted:
-                        
-                        self._BackupDatabase()
-                        
-                    
-                    self._menu_updater_database.update()
-                    
-                
+            
+            self._menu_updater_database.update()
             
         
     
@@ -7749,7 +7751,7 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
                     
                 
             
-        except:
+        except Exception as e:
             
             # obsolote comment below, leaving it just in case
             #
@@ -7868,10 +7870,45 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
         return mpv_widget
         
     
-    def GetTopLevelNotebook( self ):
+    def GetMediaViewersAPIInfo( self ):
         
-        return self._notebook
+        self.MaintainCanvasFrameReferences()
         
+        media_viewers = []
+        
+        for frame in self._canvas_frames:
+            
+            canvas_window = frame.GetCanvas()
+            
+            if canvas_window is None:
+                
+                continue
+                
+            
+            # TODO: we could add pos/size stuff here maybe, and similar for the main gui in a diff call?
+            
+            media_viewer_info_dict = {
+                'canvas_type' : canvas_window.GetCanvasType(),
+                'canvas_key' : canvas_window.GetCanvasKey().hex(),
+            }
+            
+            current_media = canvas_window.GetMedia()
+            
+            if current_media is None:
+                
+                media_viewer_info_dict[ 'current_media' ] = None
+                
+            else:
+                
+                media_viewer_info_dict[ 'current_media' ] = ClientMediaResultAPI.GetMediaResultAPIDict( current_media.GetMediaResult() )
+                
+            
+            media_viewers.append( media_viewer_info_dict )
+            
+        
+        return media_viewers
+        
+    
     def GetNotebookCurrentPage( self ):
         
         return self._notebook.GetCurrentMediaPage()
@@ -7899,6 +7936,11 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
     def GetPagesHistory( self ):
         
         return self._page_nav_history.GetHistory()
+        
+    
+    def GetTopLevelNotebook( self ):
+        
+        return self._notebook
         
     
     def GetTotalPageCounts( self ):
@@ -8250,6 +8292,18 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
         self._menu_updater_undo.update()
         
     
+    def NotifyPageJustChanged( self ):
+        
+        current_page = self._notebook.GetCurrentMediaPage()
+        
+        if current_page is not None:
+            
+            self._page_nav_history.AddPage( current_page )
+            
+        
+        self._menu_updater_set_pages_history_dirty.Update()
+        
+    
     def NotifyPendingUploadFinished( self, service_key: bytes ):
         
         self._currently_uploading_pending.discard( service_key )
@@ -8558,18 +8612,6 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
         page.RefreshQuery()
         
     
-    def NotifyPageJustChanged( self ):
-        
-        current_page = self._notebook.GetCurrentMediaPage()
-        
-        if current_page is not None:
-            
-            self._page_nav_history.AddPage( current_page )
-            
-        
-        self._menu_updater_set_pages_history_dirty.Update()
-        
-    
     def RefreshStatusBar( self ):
         
         self._RefreshStatusBar()
@@ -8592,11 +8634,11 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
             
         
     
-    def RegisterCanvasFrameReference( self, frame ):
+    def RegisterCanvasFrameReference( self, canvas_frame: ClientGUICanvasFrame.CanvasFrame ):
         
         self.MaintainCanvasFrameReferences()
         
-        self._canvas_frames.append( frame )
+        self._canvas_frames.append( canvas_frame )
         
     
     def RegisterUIUpdateWindow( self, window ):
@@ -8616,7 +8658,7 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
         self._persistent_mpv_widgets.append( mpv_widget )
         
     
-    def _UnloadAndPurgeQtMediaplayer( self, qt_media_player: ClientGUICanvasMedia.QtMediaPlayer ):
+    def _UnloadAndPurgeQtMediaPlayer( self, qt_media_player: ClientGUIQtMediaPlayer.QtMediaPlayerVideoWidget | ClientGUIQtMediaPlayer.QtMediaPlayerGraphicsView):
         
         if qt_media_player.IsCompletelyUnloaded():
             
@@ -8626,18 +8668,18 @@ The password is cleartext here but obscured in the entry dialog. Enter a blank p
             
             qt_media_player.TryToUnload()
             
-            self._controller.CallLaterQtSafe( self, 5.0, 'purge QMediaPlayer', self._UnloadAndPurgeQtMediaplayer, qt_media_player )
+            self._controller.CallLaterQtSafe( self, 2.0, 'purge QMediaPlayer', self._UnloadAndPurgeQtMediaPlayer, qt_media_player )
             
         
     
-    def ReleaseQtMediaPlayer( self, qt_media_player: ClientGUICanvasMedia.QtMediaPlayer ):
+    def ReleaseQtMediaPlayer( self, qt_media_player: ClientGUIQtMediaPlayer.QtMediaPlayerVideoWidget | ClientGUIQtMediaPlayer.QtMediaPlayerGraphicsView ):
         
         if qt_media_player.parentWidget() != self:
             
             qt_media_player.setParent( self )
             
         
-        self._controller.CallLaterQtSafe( self, 5.0, 'start QMediaPlayer purge', self._UnloadAndPurgeQtMediaplayer, qt_media_player )
+        self._controller.CallLaterQtSafe( self, 0.5, 'start QMediaPlayer purge', self._UnloadAndPurgeQtMediaPlayer, qt_media_player )
         
     
     def REPEATINGBandwidth( self ):

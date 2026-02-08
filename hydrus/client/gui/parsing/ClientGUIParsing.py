@@ -416,7 +416,7 @@ class DownloaderExportPanel( ClientGUIScrolledPanels.ReviewPanel ):
                     
                     parsers_to_include.add( parser )
                     
-                except:
+                except Exception as e:
                     
                     pass
                     
@@ -1227,6 +1227,8 @@ class EditPageParserPanel( ClientGUIScrolledPanels.EditPanel ):
         
         self._example_urls = ClientGUIListBoxes.AddEditDeleteListBox( example_urls_panel, 6, str, self._AddExampleURL, self._EditExampleURL )
         
+        self._example_urls.AddSimpleCopyPasteTextButtons()
+        
         #
         
         formula_panel = QW.QWidget( edit_notebook )
@@ -1542,7 +1544,7 @@ class EditPageParserPanel( ClientGUIScrolledPanels.EditPanel ):
                     
                     stuff_read = network_job.GetContentText()
                     
-                except:
+                except Exception as e:
                     
                     stuff_read = 'no response'
                     

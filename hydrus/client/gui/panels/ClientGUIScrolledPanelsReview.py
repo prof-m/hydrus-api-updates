@@ -31,6 +31,7 @@ from hydrus.client.files import ClientFilesMaintenance
 from hydrus.client.files import ClientFilesPhysical
 from hydrus.client.gui import ClientGUIAsync
 from hydrus.client.gui import ClientGUICharts
+from hydrus.client.gui import ClientGUIDialogsFiles
 from hydrus.client.gui import ClientGUIDialogsMessage
 from hydrus.client.gui import ClientGUIDialogsQuick
 from hydrus.client.gui import ClientGUIDragDrop
@@ -417,9 +418,14 @@ class MoveMediaFilesPanel( ClientGUIScrolledPanels.ReviewPanel ):
         
         path = base_location.path
         
-        if os.path.exists( path ):
+        pretty_location = path
+        
+        if base_location.real_path != base_location.path:
             
-            pretty_location = path
+            pretty_location = f'{pretty_location} (Real path: {base_location.real_path})'
+            
+        
+        if os.path.exists( path ):
             
             try:
                 
@@ -445,7 +451,7 @@ class MoveMediaFilesPanel( ClientGUIScrolledPanels.ReviewPanel ):
             
         else:
             
-            pretty_location = 'DOES NOT EXIST: {}'.format( path )
+            pretty_location = f'DOES NOT EXIST: {pretty_location}'
             
             pretty_free_space = 'DOES NOT EXIST'
             
@@ -894,17 +900,18 @@ class MoveMediaFilesPanel( ClientGUIScrolledPanels.ReviewPanel ):
     
     def _SelectPathToAdd( self ):
         
-        with QP.DirDialog( self, 'Select location' ) as dlg:
+        try:
             
-            if dlg.exec() == QW.QDialog.DialogCode.Accepted:
-                
-                path = dlg.GetPath()
-                
-                base_location = ClientFilesPhysical.FilesStorageBaseLocation( path, 1 )
-                
-                self._AddBaseLocation( base_location )
-                
+            path = ClientGUIDialogsQuick.PickDirectory( self, 'Select location.' )
             
+        except HydrusExceptions.CancelledException:
+            
+            return
+            
+        
+        base_location = ClientFilesPhysical.FilesStorageBaseLocation( path, 1 )
+        
+        self._AddBaseLocation( base_location )
         
     
     def _SetMaxNumBytes( self ):
@@ -957,30 +964,35 @@ class MoveMediaFilesPanel( ClientGUIScrolledPanels.ReviewPanel ):
     
     def _SetThumbnailLocation( self ):
         
-        with QP.DirDialog( self, 'Select thumbnail location' ) as dlg:
+        if self._ideal_thumbnails_base_location_override is not None:
             
-            if self._ideal_thumbnails_base_location_override is not None:
-                
-                dlg.setDirectory( self._ideal_thumbnails_base_location_override.path )
-                
+            starting_dir_path = self._ideal_thumbnails_base_location_override.path
             
-            if dlg.exec() == QW.QDialog.DialogCode.Accepted:
-                
-                path = dlg.GetPath()
-                
-                all_paths = { base_location.path for base_location in self._media_base_locations }
-                
-                if path in all_paths:
-                    
-                    ClientGUIDialogsMessage.ShowWarning( self, 'That path already exists as a regular file location! Please choose another.' )
-                    
-                else:
-                    
-                    self._ideal_thumbnails_base_location_override = ClientFilesPhysical.FilesStorageBaseLocation( path, 1 )
-                    
-                    self._SaveToDB()
-                    
-                
+        else:
+            
+            starting_dir_path = None
+            
+        
+        try:
+            
+            path = ClientGUIDialogsQuick.PickDirectory( self, 'Select thumbnail location.', starting_dir_path = starting_dir_path )
+            
+        except HydrusExceptions.CancelledException:
+            
+            return
+            
+        
+        all_paths = { base_location.path for base_location in self._media_base_locations }
+        
+        if path in all_paths:
+            
+            ClientGUIDialogsMessage.ShowWarning( self, 'That path already exists as a regular file location! Please choose another.' )
+            
+        else:
+            
+            self._ideal_thumbnails_base_location_override = ClientFilesPhysical.FilesStorageBaseLocation( path, 1 )
+            
+            self._SaveToDB()
             
         
     
@@ -1578,7 +1590,7 @@ class ReviewDownloaderImport( ClientGUIScrolledPanels.ReviewPanel ):
     
     def EventLainClick( self, event ):
         
-        with QP.FileDialog( self, 'Select the pngs to add.', acceptMode = QW.QFileDialog.AcceptMode.AcceptOpen, fileMode = QW.QFileDialog.FileMode.ExistingFiles, wildcard = 'PNG (*.png)' ) as dlg:
+        with ClientGUIDialogsFiles.FileDialog( self, 'Select the pngs to add.', acceptMode = QW.QFileDialog.AcceptMode.AcceptOpen, fileMode = QW.QFileDialog.FileMode.ExistingFiles, wildcard = 'PNG (*.png)' ) as dlg:
             
             if dlg.exec() == QW.QDialog.DialogCode.Accepted:
                 
@@ -3409,7 +3421,7 @@ class ReviewVacuumData( ClientGUIScrolledPanels.ReviewPanel ):
         
         #
         
-        info_message = '''Vacuuming is essentially an aggressive defrag of a database file. The entire database is copied contiguously to a new file, which then has tightly packed pages and no empty 'free' pages. Note that even a database currently has no free pages can still _sometimes_ be packed more efficiently, saving up to 40% of space, but there is no easy way to determine this ahead of time (in general, if it has been five years, you might save some space), and the database will bloat back up in time as more work happens.
+        info_message = '''Vacuuming is essentially an aggressive defrag of a database file. The entire database is copied contiguously to a new file, which then has tightly packed pages and no empty 'free' pages. Note that even a database that currently has no free pages can still _sometimes_ be packed more efficiently, saving up to 40% of space, but there is no easy way to determine this ahead of time (in general, if it has been five years, you might save some space), and the database will bloat back up in time as more work happens.
 
 Because the new database is tightly packed, it will generally be smaller than the original file. This is currently the only way to truncate a hydrus database file.
 

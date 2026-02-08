@@ -10,7 +10,7 @@ try:
     
     CBOR_AVAILABLE = True
     
-except:
+except Exception as e:
     
     pass
     
@@ -204,7 +204,7 @@ def CheckFileService( file_service_key: bytes ):
         
         service = CG.client_controller.services_manager.GetService( file_service_key )
         
-    except:
+    except Exception as e:
         
         raise HydrusExceptions.BadRequestException( 'Could not find the file service "{}"!'.format( file_service_key.hex() ) )
         
@@ -223,7 +223,7 @@ def CheckTagService( tag_service_key: bytes ):
         
         service = CG.client_controller.services_manager.GetService( tag_service_key )
         
-    except:
+    except Exception as e:
         
         raise HydrusExceptions.BadRequestException( 'Could not find the tag service "{}"!'.format( tag_service_key.hex() ) )
         
@@ -262,7 +262,7 @@ def CheckUploadableService( service_key: bytes ):
         
         service = CG.client_controller.services_manager.GetService( service_key )
         
-    except:
+    except Exception as e:
         
         raise HydrusExceptions.BadRequestException( 'Could not find the service "{}"!'.format( service_key.hex() ) )
         
@@ -303,33 +303,79 @@ def GetServicesDict():
             'type_pretty' : HC.service_string_lookup[ service.GetServiceType() ]
         }
         
-        if service.GetServiceType() in HC.STAR_RATINGS_SERVICES:
-            
-            service = typing.cast( ClientServices.ServiceLocalRatingStars, service )
-            
-            star_type = service.GetStarType()
-            
-            if star_type.HasShape():
-                
-                shape_label = ClientRatings.shape_to_str_lookup_dict[ star_type.GetShape() ]
-                
-            else:
-                
-                shape_label = 'svg'
-                
-            
-            service_dict[ 'star_shape' ] =  shape_label
-            
+        rating_colour_jobs = []
         
-        if service.GetServiceType() == HC.LOCAL_RATING_NUMERICAL:
+        if service.GetServiceType() in HC.RATINGS_SERVICES:
             
-            service = typing.cast( ClientServices.ServiceLocalRatingNumerical, service )
+            service = typing.cast( ClientServices.ServiceLocalRating, service )
             
-            allows_zero = service.AllowZero()
-            num_stars = service.GetNumStars()
+            service_dict[ 'show_in_thumbnail' ] = service.GetShowInThumbnail()
+            service_dict[ 'show_in_thumbnail_even_when_null' ] = service.GetShowInThumbnailEvenWhenNull()
             
-            service_dict[ 'min_stars' ] = 0 if allows_zero else 1
-            service_dict[ 'max_stars' ] = num_stars
+            if service.GetServiceType() in HC.STAR_RATINGS_SERVICES:
+                
+                service = typing.cast( ClientServices.ServiceLocalRatingStars, service )
+                
+                star_type = service.GetStarType()
+                
+                if star_type.HasShape():
+                    
+                    shape_label = ClientRatings.shape_to_str_lookup_dict[ star_type.GetShape() ]
+                    
+                else:
+                    
+                    shape_label = 'svg'
+                    
+                
+                service_dict[ 'star_shape' ] =  shape_label
+                
+                rating_colour_jobs = [
+                    ( 'like', ClientRatings.LIKE ),
+                    ( 'dislike', ClientRatings.DISLIKE ),
+                    ( 'null', ClientRatings.NULL ),
+                    ( 'mixed', ClientRatings.MIXED ),
+                ]
+                
+            
+            if service.GetServiceType() == HC.LOCAL_RATING_INCDEC:
+                
+                rating_colour_jobs = [
+                    ( 'like', ClientRatings.LIKE ),
+                    ( 'mixed', ClientRatings.MIXED ),
+                ]
+                
+            
+            if len( rating_colour_jobs ) > 0:
+                
+                colours_dict = {}
+                
+                for ( json_name, rating_state ) in rating_colour_jobs:
+                    
+                    ( pen_rgb, brush_rgb ) = service.GetColour( rating_state )
+                    
+                    pen_hex_value = '#' + bytes( pen_rgb ).hex().upper()
+                    brush_hex_value = '#' + bytes( brush_rgb ).hex().upper()
+                    
+                    colours_dict[ json_name ] = {
+                        'pen' : pen_hex_value,
+                        'brush' : brush_hex_value,
+                    }
+                    
+                
+                service_dict[ 'colours' ] = colours_dict
+                
+            
+            if service.GetServiceType() == HC.LOCAL_RATING_NUMERICAL:
+                
+                service = typing.cast( ClientServices.ServiceLocalRatingNumerical, service )
+                
+                allows_zero = service.AllowZero()
+                num_stars = service.GetNumStars()
+                
+                service_dict[ 'allows_zero' ] = allows_zero
+                service_dict[ 'min_stars' ] = 0 if allows_zero else 1
+                service_dict[ 'max_stars' ] = num_stars
+                
             
         
         services_dict[ service.GetServiceKey().hex() ] = service_dict
@@ -449,7 +495,7 @@ def ParseClientAPIPOSTByteArgs( args ):
                     parsed_request_args[ var_name ] = v
                     
                 
-            except:
+            except Exception as e:
                 
                 raise HydrusExceptions.BadRequestException( 'I was expecting to parse \'{}\' as a hex string, but it failed.'.format( var_name ) )
                 
@@ -485,7 +531,7 @@ def ParseClientAPIPOSTByteArgs( args ):
                     parsed_request_args[ var_name ] = v_list
                     
                 
-            except:
+            except Exception as e:
                 
                 raise HydrusExceptions.BadRequestException( 'I was expecting to parse \'{}\' as a list of hex strings, but it failed.'.format( var_name ) )
                 
@@ -531,7 +577,7 @@ def ParseClientAPIPOSTByteArgs( args ):
                     parsed_request_args[ var_name ] = bytes_dict
                     
                 
-            except:
+            except Exception as e:
                 
                 raise HydrusExceptions.BadRequestException( 'I was expecting to parse \'{}\' as a dictionary of hex strings to other data, but it failed.'.format( var_name ) )
                 
@@ -570,7 +616,7 @@ def ParseClientAPIPOSTArgs( request ):
             
             request_content_type_mime = HC.mime_enum_lookup[ content_type ]
             
-        except:
+        except Exception as e:
             
             raise HydrusExceptions.BadRequestException( 'Did not recognise Content-Type header!' )
             

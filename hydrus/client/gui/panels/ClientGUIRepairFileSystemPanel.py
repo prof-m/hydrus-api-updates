@@ -75,38 +75,39 @@ class RepairFileSystemPanel( ClientGUIScrolledPanels.ManagePanel ):
     
     def _AddLocation( self ):
         
-        with QP.DirDialog( self, 'Select the potential correct location.' ) as dlg:
+        try:
             
-            if dlg.exec() == QW.QDialog.DialogCode.Accepted:
+            path = ClientGUIDialogsQuick.PickDirectory( self, 'Select the potential correct location.' )
+            
+        except HydrusExceptions.CancelledException:
+            
+            return
+            
+        
+        potential_base_locations = [
+            ClientFilesPhysical.FilesStorageBaseLocation( path, 0 ),
+            ClientFilesPhysical.FilesStorageBaseLocation( os.path.join( path, 'client_files' ), 0 ),
+            ClientFilesPhysical.FilesStorageBaseLocation( os.path.join( path, 'thumbnails' ), 0 )
+        ]
+        
+        for subfolder in self._locations.GetData():
+            
+            for potential_base_location in potential_base_locations:
                 
-                path = dlg.GetPath()
+                new_subfolder = ClientFilesPhysical.FilesStorageSubfolder( subfolder.prefix, potential_base_location )
                 
-                potential_base_locations = [
-                    ClientFilesPhysical.FilesStorageBaseLocation( path, 0 ),
-                    ClientFilesPhysical.FilesStorageBaseLocation( os.path.join( path, 'client_files' ), 0 ),
-                    ClientFilesPhysical.FilesStorageBaseLocation( os.path.join( path, 'thumbnails' ), 0 )
-                ]
+                ok = new_subfolder.PathExists()
                 
-                for subfolder in self._locations.GetData():
+                if ok:
                     
-                    for potential_base_location in potential_base_locations:
-                        
-                        new_subfolder = ClientFilesPhysical.FilesStorageSubfolder( subfolder.prefix, potential_base_location )
-                        
-                        ok = new_subfolder.PathExists()
-                        
-                        if ok:
-                            
-                            self._missing_subfolders_to_new_subfolders[ subfolder ] = ( new_subfolder, ok )
-                            
-                            break
-                            
-                        
+                    self._missing_subfolders_to_new_subfolders[ subfolder ] = ( new_subfolder, ok )
                     
-                
-                self._locations.UpdateDatas()
+                    break
+                    
                 
             
+        
+        self._locations.UpdateDatas()
         
     
     def _ConvertPrefixToDisplayTuple( self, subfolder ):
@@ -223,26 +224,27 @@ class RepairFileSystemPanel( ClientGUIScrolledPanels.ManagePanel ):
         
         if len( subfolders ) > 0:
             
-            with QP.DirDialog( self, 'Select correct location.' ) as dlg:
+            try:
                 
-                if dlg.exec() == QW.QDialog.DialogCode.Accepted:
-                    
-                    path = dlg.GetPath()
-                    
-                    base_location = ClientFilesPhysical.FilesStorageBaseLocation( path, 0 )
-                    
-                    for subfolder in subfolders:
-                        
-                        new_subfolder = ClientFilesPhysical.FilesStorageSubfolder( subfolder.prefix, base_location )
-                        
-                        ok = new_subfolder.PathExists()
-                        
-                        self._missing_subfolders_to_new_subfolders[ subfolder ] = ( new_subfolder, ok )
-                        
-                    
-                    self._locations.UpdateDatas()
-                    
+                path = ClientGUIDialogsQuick.PickDirectory( self, 'Select correct location.' )
                 
+            except HydrusExceptions.CancelledException:
+                
+                return
+                
+            
+            base_location = ClientFilesPhysical.FilesStorageBaseLocation( path, 0 )
+            
+            for subfolder in subfolders:
+                
+                new_subfolder = ClientFilesPhysical.FilesStorageSubfolder( subfolder.prefix, base_location )
+                
+                ok = new_subfolder.PathExists()
+                
+                self._missing_subfolders_to_new_subfolders[ subfolder ] = ( new_subfolder, ok )
+                
+            
+            self._locations.UpdateDatas()
             
         
     

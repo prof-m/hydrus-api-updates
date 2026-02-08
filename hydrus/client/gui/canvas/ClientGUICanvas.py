@@ -32,6 +32,7 @@ from hydrus.client.gui import ClientGUIShortcuts
 from hydrus.client.gui import ClientGUITopLevelWindowsPanels
 from hydrus.client.gui.canvas import ClientGUICanvasHoverFrames
 from hydrus.client.gui.canvas import ClientGUICanvasMedia
+from hydrus.client.gui.canvas import ClientGUICanvasMenus
 from hydrus.client.gui.duplicates import ClientGUIDuplicateActions
 from hydrus.client.gui.media import ClientGUIMediaSimpleActions
 from hydrus.client.gui.media import ClientGUIMediaModalActions
@@ -320,7 +321,7 @@ class Canvas( CAC.ApplicationCommandProcessorMixin, QW.QWidget ):
     
     mediaCleared = QC.Signal()
     mediaChanged = QC.Signal( ClientMedia.MediaSingleton )
-    readyToDestroy = QC.Signal()
+    haveDestroyedAllMediaWindows = QC.Signal()
     
     def __init__( self, parent, location_context: ClientLocation.LocationContext ):
         
@@ -366,9 +367,9 @@ class Canvas( CAC.ApplicationCommandProcessorMixin, QW.QWidget ):
         
         self.installEventFilter( self._click_drag_reporting_filter )
         
-        self._media_container = ClientGUICanvasMedia.MediaContainer( self, self.CANVAS_TYPE, self._background_colour_generator, self._click_drag_reporting_filter )
+        self._media_container = ClientGUICanvasMedia.MediaContainer( self, self, self.CANVAS_TYPE, self._background_colour_generator, self._click_drag_reporting_filter )
         
-        self._media_container.readyToDestroy.connect( self.readyToDestroy )
+        self._media_container.haveDestroyedAllMediaWindows.connect( self.haveDestroyedAllMediaWindows )
         
         self._last_drag_pos = None
         self._current_drag_is_touch = False
@@ -775,6 +776,11 @@ class Canvas( CAC.ApplicationCommandProcessorMixin, QW.QWidget ):
         return self._my_shortcuts_handler.GetCustomShortcutNames()
         
     
+    def GetCanvasKey( self ):
+        
+        return self._canvas_key
+        
+    
     def GetColour( self, colour_type ):
         
         if self._new_options.GetBoolean( 'override_stylesheet_colours' ):
@@ -790,6 +796,11 @@ class Canvas( CAC.ApplicationCommandProcessorMixin, QW.QWidget ):
     def GetMedia( self ):
         
         return self._current_media
+        
+    
+    def HandleMouseMoveWithoutEvent( self, is_dragging: bool ):
+        
+        pass
         
     
     def ManageNotes( self, canvas_key, name_to_start_on = None ):
@@ -1568,6 +1579,16 @@ class Canvas( CAC.ApplicationCommandProcessorMixin, QW.QWidget ):
             
         
     
+    def SlideshowIsRunning( self ) -> bool:
+        
+        return False
+        
+    
+    def SupportsSlideshow( self ) -> bool:
+        
+        return False
+        
+    
     def ZoomChanged( self ):
         
         self.update()
@@ -1841,6 +1862,14 @@ class CanvasPanel( Canvas ):
             
             ClientGUIMediaMenus.AddShareMenu( self, self, menu, self._current_media, [ self._current_media ] )
             
+            ClientGUIMenus.AppendSeparator( menu )
+            
+            player_menu = ClientGUIMenus.GenerateMenu( menu )
+            
+            ClientGUIMenus.AppendMenuLabel( player_menu, f'This is a {self._media_container.GetCurrentMediaPlayerLabel()}.' )
+            
+            ClientGUIMenus.AppendMenu( menu, player_menu, 'player' )
+            
         
         CGC.core().PopupMenu( self, menu )
         
@@ -2008,7 +2037,7 @@ class CanvasPanelWithHovers( CanvasPanel ):
             
             ( VBOX_SPACING, VBOX_MARGIN ) = self._top_right_hover.GetVboxSpacingAndMargin()
             
-        except:
+        except Exception as e:
             
             QFRAME_PADDING = 2
             ( VBOX_SPACING, VBOX_MARGIN ) = ( 2, 2 )
@@ -2399,7 +2428,7 @@ class CanvasWithHovers( Canvas ):
                 
                 ( NOTE_SPACING, NOTE_MARGIN ) = self._right_notes_hover.GetNoteSpacingAndMargin()
                 
-            except:
+            except Exception as e:
                 
                 QFRAME_PADDING = 2
                 ( NOTE_SPACING, NOTE_MARGIN ) = ( 2, 2 )
@@ -2535,7 +2564,7 @@ class CanvasWithHovers( Canvas ):
                 
                 QFRAME_PADDING = self._right_notes_hover.frameWidth()
                 
-            except:
+            except Exception as e:
                 
                 QFRAME_PADDING = 2
                 
@@ -2649,7 +2678,7 @@ class CanvasWithHovers( Canvas ):
                 
                 ( VBOX_SPACING, VBOX_MARGIN ) = self._top_right_hover.GetVboxSpacingAndMargin()
                 
-            except:
+            except Exception as e:
                 
                 QFRAME_PADDING = 2
                 ( VBOX_SPACING, VBOX_MARGIN ) = ( 2, 2 )
@@ -2952,7 +2981,9 @@ class CanvasWithHovers( Canvas ):
             
         
     
-    def mouseMoveEvent( self, event ):
+    def HandleMouseMoveWithoutEvent( self, left_down: bool ):
+        
+        is_dragging = left_down and self._last_drag_pos is not None
         
         current_focus_tlw = QW.QApplication.activeWindow()
         
@@ -2971,9 +3002,7 @@ class CanvasWithHovers( Canvas ):
         event_pos = self.mapFromGlobal( QG.QCursor.pos() )
         
         mouse_currently_shown = self.cursor().shape() == QC.Qt.CursorShape.ArrowCursor
-        show_mouse = mouse_currently_shown
         
-        is_dragging = event.buttons() & QC.Qt.MouseButton.LeftButton and self._last_drag_pos is not None
         has_moved = event_pos != self._last_motion_pos
         
         we_are_hiding_an_anchored_drag = False
@@ -3035,6 +3064,13 @@ class CanvasWithHovers( Canvas ):
             
             self._RestartCursorHideWait()
             
+        
+    
+    def mouseMoveEvent( self, event ):
+        
+        left_down = bool( event.buttons() & QC.Qt.MouseButton.LeftButton )
+        
+        self.HandleMouseMoveWithoutEvent( left_down )
         
         super().mouseMoveEvent( event )
         
@@ -3266,16 +3302,6 @@ class CanvasMediaList( CanvasWithHovers ):
     def _ShowPrevious( self ):
         
         self.SetMedia( self._media_list.GetPrevious( self._current_media ) )
-        
-    
-    def _ShowRandom( self ):
-        
-        self.SetMedia( self._media_list.GetRandom( self._current_media ) )
-        
-    
-    def _UndoRandom( self ):
-        
-        self.SetMedia( self._media_list.UndoRandom( self._current_media ) )
         
     
     def _StartSlideshow( self, interval: float ):
@@ -3859,6 +3885,16 @@ class CanvasMediaListNavigable( CanvasMediaList ):
             
         
     
+    def _ShowRandom( self ):
+        
+        self.SetMedia( self._media_list.GetRandom( self._current_media ) )
+        
+    
+    def _UndoRandom( self ):
+        
+        self.SetMedia( self._media_list.UndoRandom( self._current_media ) )
+        
+    
     def Archive( self, canvas_key ):
         
         if self._canvas_key == canvas_key:
@@ -3997,6 +4033,7 @@ class CanvasMediaListNavigable( CanvasMediaList ):
             
         
     
+
 class CanvasMediaListBrowser( CanvasMediaListNavigable ):
     
     def __init__( self, parent, page_key, location_context: ClientLocation.LocationContext, media_results, first_hash ):
@@ -4019,7 +4056,7 @@ class CanvasMediaListBrowser( CanvasMediaListNavigable ):
                 # TODO: fix this ugly, temporary hack from refactoring
                 first_media = self._media_list.GetMediaByHashes( { first_hash } )[0]
                 
-            except:
+            except Exception as e:
                 
                 first_media = self._media_list.GetFirst()
                 
@@ -4169,7 +4206,15 @@ class CanvasMediaListBrowser( CanvasMediaListNavigable ):
                 return
                 
             
-            self._ShowNext()
+            if CG.client_controller.new_options.GetBoolean( 'slideshows_progress_randomly' ):
+                
+                self._ShowRandom()
+                
+            else:
+                
+                self._ShowNext()
+                
+                
             
             self._RegisterNextSlideshowPresentation()
             
@@ -4230,12 +4275,14 @@ class CanvasMediaListBrowser( CanvasMediaListNavigable ):
             
             period = float( period_str )
             
-            self._StartSlideshow( period )
-            
-        except:
+        except Exception as e:
             
             ClientGUIDialogsMessage.ShowWarning( self, 'Could not parse that slideshow period!' )
             
+            return
+            
+        
+        self._StartSlideshow( period )
         
     
     def _StopSlideshow( self ):
@@ -4273,6 +4320,21 @@ class CanvasMediaListBrowser( CanvasMediaListNavigable ):
             if action == CAC.SIMPLE_PAUSE_PLAY_SLIDESHOW:
                 
                 self._PausePlaySlideshow()
+                
+            elif action == CAC.SIMPLE_START_SLIDESHOW:
+                
+                data = command.GetSimpleData()
+                
+                if data is None:
+                    
+                    self._StartSlideshowCustomPeriod()
+                    
+                else:
+                    
+                    period_seconds = data
+                    
+                    self._StartSlideshow( period_seconds )
+                    
                 
             elif action == CAC.SIMPLE_SHOW_MENU:
                 
@@ -4374,26 +4436,7 @@ class CanvasMediaListBrowser( CanvasMediaListNavigable ):
                 ClientGUIMenus.AppendMenuItem( menu, 'go fullscreen', 'Make this media viewer a fullscreen window without borders.', self.ProcessApplicationCommand, CAC.ApplicationCommand.STATICCreateSimpleCommand( CAC.SIMPLE_SWITCH_BETWEEN_FULLSCREEN_BORDERLESS_AND_REGULAR_FRAMED_WINDOW ) )
                 
             
-            slideshow = ClientGUIMenus.GenerateMenu( menu )
-            
-            slideshow_durations = CG.client_controller.new_options.GetSlideshowDurations()
-            
-            for slideshow_duration in slideshow_durations:
-                
-                pretty_duration = HydrusTime.TimeDeltaToPrettyTimeDelta( slideshow_duration )
-                
-                ClientGUIMenus.AppendMenuItem( slideshow, pretty_duration, f'Start a slideshow that changes media every {pretty_duration}.', self._StartSlideshow, slideshow_duration )
-                
-            
-            ClientGUIMenus.AppendMenuItem( slideshow, 'very fast', 'Start a very fast slideshow.', self._StartSlideshow, 0.08 )
-            ClientGUIMenus.AppendMenuItem( slideshow, 'custom interval', 'Start a slideshow with a custom interval.', self._StartSlideshowCustomPeriod )
-            
-            ClientGUIMenus.AppendMenu( menu, slideshow, 'start slideshow' )
-            
-            if self._slideshow_is_running:
-                
-                ClientGUIMenus.AppendMenuItem( menu, 'stop slideshow', 'Stop the current slideshow.', self._PausePlaySlideshow )
-                
+            ClientGUICanvasMenus.AppendSlideshowMenu( self, menu, self._slideshow_is_running )
             
             ClientGUIMenus.AppendSeparator( menu )
             
@@ -4495,8 +4538,26 @@ class CanvasMediaListBrowser( CanvasMediaListNavigable ):
             
             ClientGUIMediaMenus.AddShareMenu( self, self, menu, self._current_media, [ self._current_media ] )
             
+            ClientGUIMenus.AppendSeparator( menu )
+            
+            player_menu = ClientGUIMenus.GenerateMenu( menu )
+            
+            ClientGUIMenus.AppendMenuLabel( player_menu, f'This is a {self._media_container.GetCurrentMediaPlayerLabel()}.' )
+            
+            ClientGUIMenus.AppendMenu( menu, player_menu, 'player' )
+            
             CGC.core().PopupMenu( self, menu )
             
+        
+    
+    def SlideshowIsRunning( self ) -> bool:
+        
+        return self._slideshow_is_running
+        
+    
+    def SupportsSlideshow( self ) -> bool:
+        
+        return True
         
     
     def TIMERUIUpdate( self ):

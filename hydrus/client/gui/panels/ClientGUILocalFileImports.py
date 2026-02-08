@@ -19,6 +19,7 @@ from hydrus.client import ClientConstants as CC
 from hydrus.client import ClientGlobals as CG
 from hydrus.client.files import ClientFiles
 from hydrus.client.gui import ClientGUIAsync
+from hydrus.client.gui import ClientGUIDialogsFiles
 from hydrus.client.gui import ClientGUIDialogsMessage
 from hydrus.client.gui import ClientGUIDialogsQuick
 from hydrus.client.gui import ClientGUIDragDrop
@@ -31,7 +32,7 @@ from hydrus.client.gui.lists import ClientGUIListConstants as CGLC
 from hydrus.client.gui.lists import ClientGUIListCtrl
 from hydrus.client.gui.panels import ClientGUIScrolledPanels
 from hydrus.client.gui.widgets import ClientGUICommon
-from hydrus.client.importing.options import FileImportOptions
+from hydrus.client.importing.options import FileImportOptionsLegacy
 from hydrus.client.metadata import ClientTags
 
 RESULT_NOT_PARSED = 0
@@ -145,7 +146,7 @@ class ReviewLocalFileImports( ClientGUIScrolledPanels.ReviewPanel ):
         self._progress_cancel = ClientGUICommon.IconButton( self, CC.global_icons().stop, self.Cancel )
         self._progress_cancel.setEnabled( False )
         
-        file_import_options = FileImportOptions.FileImportOptions()
+        file_import_options = FileImportOptionsLegacy.FileImportOptionsLegacy()
         file_import_options.SetIsDefault( True )
         
         show_downloader_options = False
@@ -415,7 +416,7 @@ class ReviewLocalFileImports( ClientGUIScrolledPanels.ReviewPanel ):
                             
                             sidecar_local_file_parse.size = os.path.getsize( sidecar_path )
                             
-                        except:
+                        except Exception as e:
                             
                             sidecar_local_file_parse.size = 0
                             
@@ -445,7 +446,7 @@ class ReviewLocalFileImports( ClientGUIScrolledPanels.ReviewPanel ):
                             
                             size = os.path.getsize( path )
                             
-                        except:
+                        except Exception as e:
                             
                             size = 0
                             
@@ -683,20 +684,21 @@ class ReviewLocalFileImports( ClientGUIScrolledPanels.ReviewPanel ):
     
     def AddFolder( self ):
         
-        with QP.DirDialog( self, 'Select a folder to add.' ) as dlg:
+        try:
             
-            if dlg.exec() == QW.QDialog.DialogCode.Accepted:
-                
-                path = dlg.GetPath()
-                
-                self._AddPathsToList( ( path, ) )
-                
+            path = ClientGUIDialogsQuick.PickDirectory( self, 'Select a folder to add.' )
             
+        except HydrusExceptions.CancelledException:
+            
+            return
+            
+        
+        self._AddPathsToList( ( path, ) )
         
     
     def AddPaths( self ):
         
-        with QP.FileDialog( self, 'Select the files to add.', fileMode = QW.QFileDialog.FileMode.ExistingFiles ) as dlg:
+        with ClientGUIDialogsFiles.FileDialog( self, 'Select the files to add.', fileMode = QW.QFileDialog.FileMode.ExistingFiles ) as dlg:
             
             if dlg.exec() == QW.QDialog.DialogCode.Accepted:
                 

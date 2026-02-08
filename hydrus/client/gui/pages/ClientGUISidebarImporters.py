@@ -43,7 +43,7 @@ from hydrus.client.importing import ClientImportGallery
 from hydrus.client.importing import ClientImportWatchers
 from hydrus.client.importing import ClientImportLocal
 from hydrus.client.importing import ClientImportSimpleURLs
-from hydrus.client.importing.options import FileImportOptions
+from hydrus.client.importing.options import FileImportOptionsLegacy
 from hydrus.client.importing.options import PresentationImportOptions
 from hydrus.client.metadata import ClientTags
 from hydrus.client.networking import ClientNetworkingFunctions
@@ -140,7 +140,7 @@ class SidebarImporterHDD( SidebarImporter ):
         
         super().__init__( parent, page, page_manager )
         
-        self._import_queue_panel = ClientGUICommon.StaticBox( self, 'imports' )
+        self._import_queue_panel = ClientGUICommon.StaticBox( self, 'imports', start_expanded = True, can_expand = True )
         
         self._current_action = ClientGUICommon.BetterStaticText( self._import_queue_panel, ellipsize_end = True )
         
@@ -256,7 +256,7 @@ class SidebarImporterMultipleGallery( SidebarImporter ):
         
         #
         
-        self._gallery_downloader_panel = ClientGUICommon.StaticBox( self, 'gallery downloader' )
+        self._gallery_downloader_panel = ClientGUICommon.StaticBox( self, 'gallery downloader', start_expanded = True, can_expand = True )
         
         #
         
@@ -632,7 +632,7 @@ class SidebarImporterMultipleGallery( SidebarImporter ):
             
             fio = importer.GetFileImportOptions()
             
-            single_selected_presentation_import_options = FileImportOptions.GetRealPresentationImportOptions( fio, FileImportOptions.IMPORT_TYPE_LOUD )
+            single_selected_presentation_import_options = FileImportOptionsLegacy.GetRealPresentationImportOptions( fio, FileImportOptionsLegacy.IMPORT_TYPE_LOUD )
             
         
         AddPresentationSubmenu( menu, 'downloader', single_selected_presentation_import_options, self._ShowSelectedImportersFiles )
@@ -1250,7 +1250,7 @@ class SidebarImporterMultipleGallery( SidebarImporter ):
                 
                 update_period = max( min_time, num_items / denominator )
                 
-            except:
+            except Exception as e:
                 
                 update_period = 1.0
                 
@@ -1394,7 +1394,7 @@ class SidebarImporterMultipleWatcher( SidebarImporter ):
         
         #
         
-        self._watchers_panel = ClientGUICommon.StaticBox( self, 'watchers' )
+        self._watchers_panel = ClientGUICommon.StaticBox( self, 'watchers', start_expanded = True, can_expand = True )
         
         self._watchers_status_st_top = ClientGUICommon.BetterStaticText( self._watchers_panel, ellipsize_end = True )
         self._watchers_status_st_bottom = ClientGUICommon.BetterStaticText( self._watchers_panel, ellipsize_end = True )
@@ -1800,7 +1800,7 @@ class SidebarImporterMultipleWatcher( SidebarImporter ):
             
             fio = watcher.GetFileImportOptions()
             
-            single_selected_presentation_import_options = FileImportOptions.GetRealPresentationImportOptions( fio, FileImportOptions.IMPORT_TYPE_LOUD )
+            single_selected_presentation_import_options = FileImportOptionsLegacy.GetRealPresentationImportOptions( fio, FileImportOptionsLegacy.IMPORT_TYPE_LOUD )
             
         
         AddPresentationSubmenu( menu, 'watcher', single_selected_presentation_import_options, self._ShowSelectedImportersFiles )
@@ -2424,7 +2424,7 @@ class SidebarImporterMultipleWatcher( SidebarImporter ):
                 
                 update_period = max( min_time, num_items / denominator )
                 
-            except:
+            except Exception as e:
                 
                 update_period = 1.0
                 
@@ -2564,7 +2564,7 @@ class SidebarImporterSimpleDownloader( SidebarImporter ):
         
         #
         
-        self._simple_downloader_panel = ClientGUICommon.StaticBox( self, 'simple downloader' )
+        self._simple_downloader_panel = ClientGUICommon.StaticBox( self, 'simple downloader', start_expanded = True, can_expand = True )
         
         #
         
@@ -2966,7 +2966,7 @@ class SidebarImporterURLs( SidebarImporter ):
         
         #
         
-        self._url_panel = ClientGUICommon.StaticBox( self, 'url downloader' )
+        self._url_panel = ClientGUICommon.StaticBox( self, 'url downloader', start_expanded = True, can_expand = True )
         
         #
         

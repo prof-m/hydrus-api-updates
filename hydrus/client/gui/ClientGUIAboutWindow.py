@@ -61,6 +61,7 @@ def ShowAboutWindow( win: QW.QWidget ):
     from hydrus.client import ClientTime
     from hydrus.client.gui import ClientGUICharts
     from hydrus.client.gui.canvas import ClientGUIMPV
+    from hydrus.client.networking import ClientNetworkingDomainTLDExtract
     from hydrus.client.parsing import ClientParsing
 
     name = 'hydrus client'
@@ -153,7 +154,7 @@ def ShowAboutWindow( win: QW.QWidget ):
             qt_string += f' ({actual_platform_name})'
             
         
-    except:
+    except Exception as e:
         
         qt_string += f' (unknown platform)'
         
@@ -172,7 +173,18 @@ def ShowAboutWindow( win: QW.QWidget ):
     
     library_version_lines.append( 'install dir: {}'.format( HC.BASE_DIR ) )
     library_version_lines.append( 'db dir: {}'.format( CG.client_controller.db_dir ) )
+    
+    current_temp_dir = HydrusTemp.GetCurrentTempDir()
+    
     library_version_lines.append( 'temp dir: {}'.format( HydrusTemp.GetCurrentTempDir() ) )
+    
+    sqlite_temp_dir = HydrusTemp.GetCurrentSQLiteTempDir()
+    
+    if sqlite_temp_dir != current_temp_dir:
+        
+        library_version_lines.append( f'sqlite temp dir (from SQLITE_TMPDIR env): {sqlite_temp_dir}' )
+        
+    
     
     import locale
     
@@ -186,7 +198,7 @@ def ShowAboutWindow( win: QW.QWidget ):
     library_version_lines.append( 'db cache size per file: {}MB'.format( HG.db_cache_size ) )
     library_version_lines.append( 'db journal mode: {}'.format( HG.db_journal_mode ) )
     library_version_lines.append( 'db synchronous mode: {}'.format( HG.db_synchronous ) )
-    library_version_lines.append( 'db transaction commit period: {}'.format( HydrusTime.TimeDeltaToPrettyTimeDelta( HG.db_cache_size ) ) )
+    library_version_lines.append( 'db transaction commit period: {}'.format( HydrusTime.TimeDeltaToPrettyTimeDelta( HG.db_transaction_commit_period ) ) )
     library_version_lines.append( 'db using memory for temp?: {}'.format( HG.no_db_temp_files ) )
     
     description_versions = 'This is the media management application of the hydrus software suite.' + '\n' * 2 + '\n'.join( library_version_lines )
@@ -226,7 +238,7 @@ def ShowAboutWindow( win: QW.QWidget ):
         import cbor2
         CBOR_AVAILABLE = True
         
-    except:
+    except Exception as e:
         
         pass
         
@@ -240,6 +252,7 @@ def ShowAboutWindow( win: QW.QWidget ):
     availability_lines.append( render_availability_line( 'lxml', ClientParsing.LXML_IS_OK, not ClientParsing.LXML_IS_OK, '' ) )
     availability_lines.append( render_availability_line( 'lz4', HydrusCompression.LZ4_OK, not HydrusCompression.LZ4_OK, '' ) )
     availability_lines.append( render_availability_line( 'olefile', HydrusOLEHandling.OLEFILE_OK, not HydrusOLEHandling.OLEFILE_OK, '' ) )
+    availability_lines.append( render_availability_line( 'tldextract (under testing)', ClientNetworkingDomainTLDExtract.TLDEXTRACT_OK, ClientNetworkingDomainTLDExtract.TLDEXTRACT_MODULE_NOT_FOUND, ClientNetworkingDomainTLDExtract.TLDEXTRACT_IMPORT_ERROR ) )
     
     #
     

@@ -19,6 +19,7 @@ from hydrus.core import HydrusPaths
 from hydrus.core import HydrusPubSub
 from hydrus.core import HydrusSessions
 from hydrus.core import HydrusTemp
+from hydrus.core.files import HydrusFilesPhysicalStorage
 from hydrus.core.processes import HydrusThreading
 
 from hydrus.client import ClientAPI
@@ -65,6 +66,7 @@ from hydrus.test import TestClientMetadataConditional
 from hydrus.test import TestClientMetadataMigration
 from hydrus.test import TestClientMigration
 from hydrus.test import TestClientNetworking
+from hydrus.test import TestClientNetworkingSettings
 from hydrus.test import TestClientParsing
 from hydrus.test import TestClientSearch
 from hydrus.test import TestClientTags
@@ -188,6 +190,8 @@ class Controller( object ):
         self.run_finished = False
         self.was_successful = False
         
+        self.main_qt_thread = self.app.thread()
+        
         self.call_after_catcher = ClientGUICallAfter.CallAfterEventCatcher( QW.QApplication.instance() )
         
         self._test_db = None
@@ -282,12 +286,14 @@ class Controller( object ):
         
         base_location = ClientFilesPhysical.FilesStorageBaseLocation( client_files_default, 1 )
         
-        for prefix in HydrusData.IterateHexPrefixes():
+        for prefix in HydrusFilesPhysicalStorage.IteratePrefixes( 'f' ):
             
-            for c in ( 'f', 't' ):
-                
-                client_files_subfolders.append( ClientFilesPhysical.FilesStorageSubfolder( c + prefix, base_location ) )
-                
+            client_files_subfolders.append( ClientFilesPhysical.FilesStorageSubfolder( prefix, base_location ) )
+            
+        
+        for prefix in HydrusFilesPhysicalStorage.IteratePrefixes( 't' ):
+            
+            client_files_subfolders.append( ClientFilesPhysical.FilesStorageSubfolder( prefix, base_location ) )
             
         
         self._name_read_responses[ 'client_files_subfolders' ] = client_files_subfolders
@@ -396,6 +402,11 @@ class Controller( object ):
         return HydrusData.GenerateKey()
         
     
+    def AmInTheMainQtThread( self ) -> bool:
+        
+        return QC.QThread.currentThread() == self.main_qt_thread
+        
+    
     def CallBlockingToQt( self, win, func: typing.Callable[ callable_P, callable_R ], *args: callable_P.args, **kwargs: callable_P.kwargs ) -> callable_R:
         
         def qt_code( win: QW.QWidget, job_status: ClientThreading.JobStatus ):
@@ -414,6 +425,11 @@ class Controller( object ):
                 
                 job_status.Finish()
                 
+            
+        
+        if self.AmInTheMainQtThread():
+            
+            return func( *args, **kwargs )
             
         
         job_status = ClientThreading.JobStatus( cancellable = True, cancel_on_shutdown = False )
@@ -642,6 +658,11 @@ class Controller( object ):
         return self.win
         
     
+    def GetMediaViewersAPIInfo( self ):
+        
+        raise NotImplementedError()
+        
+    
     def GetNewOptions( self ):
         
         return self.new_options
@@ -766,7 +787,7 @@ class Controller( object ):
                 return self._param_read_responses[ ( name, args ) ]
                 
             
-        except:
+        except Exception as e:
             
             pass
             
@@ -922,6 +943,7 @@ class Controller( object ):
         
         module_lookup[ 'networking' ] = [
             TestClientNetworking,
+            TestClientNetworkingSettings,
             TestHydrusNetworking
         ]
         

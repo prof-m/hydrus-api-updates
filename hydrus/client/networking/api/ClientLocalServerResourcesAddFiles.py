@@ -19,7 +19,7 @@ from hydrus.client import ClientLocation
 from hydrus.client import ClientPaths
 from hydrus.client.files.images import ClientImagePerceptualHashes
 from hydrus.client.importing import ClientImportFiles
-from hydrus.client.importing.options import FileImportOptions
+from hydrus.client.importing.options import FileImportOptionsLegacy
 from hydrus.client.metadata import ClientContentUpdates
 from hydrus.client.metadata import ClientFileMigration
 from hydrus.client.networking.api import ClientLocalServerCore
@@ -67,13 +67,13 @@ class HydrusResourceClientAPIRestrictedAddFilesAddFile( HydrusResourceClientAPIR
         
         ( os_file_handle, temp_path ) = request.temp_file_info
         
-        file_import_options = CG.client_controller.new_options.GetDefaultFileImportOptions( FileImportOptions.IMPORT_TYPE_QUIET ).Duplicate()
+        file_import_options = CG.client_controller.new_options.GetDefaultFileImportOptions( FileImportOptionsLegacy.IMPORT_TYPE_QUIET ).Duplicate()
         
         custom_location_context = ClientLocalServerCore.ParseLocalFileDomainLocationContext( request )
         
         if custom_location_context is not None:
             
-            file_import_options.SetDestinationLocationContext( custom_location_context )
+            file_import_options.GetLocationImportOptions().SetDestinationLocationContext( custom_location_context )
             
         
         file_import_job = ClientImportFiles.FileImportJob( temp_path, file_import_options, human_file_description = f'API POSTed File' )

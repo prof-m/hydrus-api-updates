@@ -9,6 +9,7 @@ from hydrus.core import HydrusExceptions
 from hydrus.core import HydrusGlobals as HG
 
 from hydrus.client import ClientGlobals as CG
+from hydrus.client.networking import ClientNetworkingDomainTLDExtract
 
 percent_encoding_re = re.compile( r'%[0-9A-Fa-f]{2}' )
 double_hex_re = re.compile( r'[0-9A-Fa-f]{2}' )
@@ -105,9 +106,17 @@ def ConvertDomainIntoAllApplicableDomains( domain, discard_www = True ):
         domain = RemoveWWWFromDomain( domain )
         
     
+    second_level_domain = ConvertDomainIntoSecondLevelDomain( domain )
+    
+    # we want the second level domain, but no smaller
     while domain.count( '.' ) > 0:
         
         domains.append( domain )
+        
+        if domain == second_level_domain:
+            
+            break
+            
         
         domain = ConvertDomainIntoNextLevelDomain( domain )
         
@@ -117,19 +126,42 @@ def ConvertDomainIntoAllApplicableDomains( domain, discard_www = True ):
 
 def ConvertDomainIntoNextLevelDomain( domain ):
     
+    # do not 'fix' this to error at anything above the second level domain
+    
     return '.'.join( domain.split( '.' )[1:] ) # i.e. strip off the leftmost subdomain maps.google.com -> google.com
     
 
+TLDEXTRACT_ERROR_SHOWN = False
+
 def ConvertDomainIntoSecondLevelDomain( domain ):
     
-    domains = ConvertDomainIntoAllApplicableDomains( domain )
-    
-    if len( domains ) == 0:
+    if ClientNetworkingDomainTLDExtract.TLDEXTRACT_OK:
         
-        raise HydrusExceptions.URLClassException( 'That url or domain did not seem to be valid!' )
+        try:
+            
+            return ClientNetworkingDomainTLDExtract.ConvertDomainIntoSecondLevelDomain( domain )
+            
+        except Exception as e:
+            
+            global TLDEXTRACT_ERROR_SHOWN
+            
+            if not TLDEXTRACT_ERROR_SHOWN:
+                
+                TLDEXTRACT_ERROR_SHOWN = True
+                
+                HydrusData.Print( 'Hey, some domain stuff went wrong. Hydev would be interested in seeing this:' )
+                HydrusData.PrintException( e, do_wait = False )
+                
+            
         
     
-    return domains[-1]
+    # produces the 'co.uk' "second level domain" issue
+    while domain.count( '.' ) > 1:
+        
+        domain = ConvertDomainIntoNextLevelDomain( domain )
+        
+    
+    return domain
     
 
 def ConvertDomainIntoSortable( domain: str ):
@@ -150,6 +182,33 @@ def ConvertDomainIntoSortable( domain: str ):
     # ( mysite.com, tuple() )
     # ( mysite.com, ( 'artistname', ) )
     return ( second_level_domain, subdomains_in_power_order )
+    
+
+def ConvertDomainIntoTopLevelDomain( domain ):
+    
+    if ClientNetworkingDomainTLDExtract.TLDEXTRACT_OK:
+        
+        try:
+            
+            return ClientNetworkingDomainTLDExtract.ConvertDomainIntoTopLevelDomain( domain )
+            
+        except Exception as e:
+            
+            global TLDEXTRACT_ERROR_SHOWN
+            
+            if not TLDEXTRACT_ERROR_SHOWN:
+                
+                TLDEXTRACT_ERROR_SHOWN = True
+                
+                HydrusData.Print( 'Hey, some domain stuff went wrong. Hydev would be interested in seeing this:' )
+                HydrusData.PrintException( e, do_wait = False )
+                
+            
+        
+    
+    second_level_domain = ConvertDomainIntoSecondLevelDomain( domain )
+    
+    return ConvertDomainIntoNextLevelDomain( second_level_domain )
     
 
 def ConvertHTTPSToHTTP( url ):
@@ -494,7 +553,7 @@ def CheckLooksLikeAFullURL( text: str ):
             raise HydrusExceptions.URLClassException( 'No domain in "{text}"!' )
             
         
-    except:
+    except Exception as e:
         
         raise HydrusExceptions.URLClassException( f'Could not parse "{text}" at all!' )
         
@@ -607,7 +666,7 @@ def EnsureURLIsEncoded( url: str, keep_fragment = True ) -> str:
         
         return clean_url
         
-    except:
+    except Exception as e:
         
         return url
         
@@ -618,7 +677,9 @@ OH_NO_NO_NETLOC_CHARACTERS_UNICODE_TRANSLATE = { ord( char ) : '_' for char in O
 
 def RemoveWWWFromDomain( domain ):
     
-    if domain.count( '.' ) > 1 and domain.startswith( 'www' ):
+    second_level_domain = ConvertDomainIntoSecondLevelDomain( domain )
+    
+    if domain != second_level_domain and domain.count( '.' ) > 1 and domain.startswith( 'www' ):
         
         domain = ConvertDomainIntoNextLevelDomain( domain )
         

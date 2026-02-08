@@ -3090,18 +3090,19 @@ class ReviewServiceRepositorySubPanel( QW.QWidget ):
                 
             
         
-        with QP.DirDialog( self, 'Select export location.' ) as dlg:
+        try:
             
-            if dlg.exec() == QW.QDialog.DialogCode.Accepted:
-                
-                path = dlg.GetPath()
-                
-                self._export_updates_button.setText( 'exporting' + HC.UNICODE_ELLIPSIS )
-                self._export_updates_button.setEnabled( False )
-                
-                CG.client_controller.CallToThread( do_it, path, self._service )
-                
+            path = ClientGUIDialogsQuick.PickDirectory( self, 'Select export location.' )
             
+        except HydrusExceptions.CancelledException:
+            
+            return
+            
+        
+        self._export_updates_button.setText( 'exporting' + HC.UNICODE_ELLIPSIS )
+        self._export_updates_button.setEnabled( False )
+        
+        CG.client_controller.CallToThread( do_it, path, self._service )
         
     
     def _FetchServiceInfo( self ):
@@ -4107,7 +4108,7 @@ class ReviewServicesPanel( ClientGUIScrolledPanels.ReviewPanel ):
                 previous_service_key = page.GetServiceKey()
                 
             
-        except:
+        except Exception as e:
             
             previous_service_key = None
             

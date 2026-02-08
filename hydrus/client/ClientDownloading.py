@@ -10,7 +10,9 @@ from hydrus.client import ClientConstants as CC
 from hydrus.client import ClientDaemons
 from hydrus.client import ClientThreading
 from hydrus.client.importing import ClientImportFiles
-from hydrus.client.importing.options import FileImportOptions
+from hydrus.client.importing.options import FileFilteringImportOptions
+from hydrus.client.importing.options import FileImportOptionsLegacy
+from hydrus.client.importing.options import PrefetchImportOptions
 
 def ConvertGalleryIdentifierToGUGKeyAndName( gallery_identifier ):
     
@@ -293,7 +295,7 @@ class QuickDownloadManager( ClientDaemons.ManagerWithMainLoop ):
                         
                         service = self._controller.services_manager.GetService( service_key )
                         
-                    except:
+                    except Exception as e:
                         
                         continue
                         
@@ -312,25 +314,21 @@ class QuickDownloadManager( ClientDaemons.ManagerWithMainLoop ):
                                     
                                     file_repository.Request( HC.GET, 'file', { 'hash' : hash }, temp_path = temp_path )
                                     
-                                    exclude_deleted = False # this is the important part here
-                                    preimport_hash_check_type = FileImportOptions.DO_CHECK_AND_MATCHES_ARE_DISPOSITIVE
-                                    preimport_url_check_type = FileImportOptions.DO_CHECK
-                                    preimport_url_check_looks_for_neighbour_spam = True
-                                    allow_decompression_bombs = True
-                                    min_size = None
-                                    max_size = None
-                                    max_gif_size = None
-                                    min_resolution = None
-                                    max_resolution = None
-                                    automatic_archive = False
-                                    associate_primary_urls = True
-                                    associate_source_urls = True
+                                    prefetch_import_options = PrefetchImportOptions.PrefetchImportOptions()
                                     
-                                    file_import_options = FileImportOptions.FileImportOptions()
+                                    prefetch_import_options.SetPreImportHashCheckType( PrefetchImportOptions.DO_CHECK_AND_MATCHES_ARE_DISPOSITIVE )
+                                    prefetch_import_options.SetPreImportURLCheckType( PrefetchImportOptions.DO_CHECK )
+                                    prefetch_import_options.SetPreImportURLCheckLooksForNeighbourSpam( True )
                                     
-                                    file_import_options.SetPreImportOptions( exclude_deleted, preimport_hash_check_type, preimport_url_check_type, allow_decompression_bombs, min_size, max_size, max_gif_size, min_resolution, max_resolution )
-                                    file_import_options.SetPreImportURLCheckLooksForNeighbourSpam( preimport_url_check_looks_for_neighbour_spam )
-                                    file_import_options.SetPostImportOptions( automatic_archive, associate_primary_urls, associate_source_urls )
+                                    file_filtering_import_options = FileFilteringImportOptions.FileFilteringImportOptions()
+                                    
+                                    file_filtering_import_options.SetAllowsDecompressionBombs( True )
+                                    file_filtering_import_options.SetExcludesDeleted( False ) # important
+                                    
+                                    file_import_options = FileImportOptionsLegacy.FileImportOptionsLegacy()
+                                    
+                                    file_import_options.SetPrefetchImportOptions( prefetch_import_options )
+                                    file_import_options.SetFileFilteringImportOptions( file_filtering_import_options )
                                     
                                     file_import_job = ClientImportFiles.FileImportJob( temp_path, file_import_options, human_file_description = f'Downloaded File - {hash.hex()}' )
                                     
