@@ -26,6 +26,7 @@ from hydrus.core.files import HydrusUgoiraHandling
 from hydrus.core.files import HydrusVideoHandling
 from hydrus.core.files import HydrusOfficeOpenXMLHandling
 from hydrus.core.files import HydrusOLEHandling
+from hydrus.core.files import HydrusORAHandling
 from hydrus.core.files.images import HydrusImageHandling
 from hydrus.core.networking import HydrusNetwork
 
@@ -73,6 +74,7 @@ def InitialiseMimesToDefaultThumbnailPaths():
     mimes_to_default_thumbnail_paths[ HC.APPLICATION_CLIP ] = HydrusStaticDir.GetStaticPath( 'clip.png' )
     mimes_to_default_thumbnail_paths[ HC.APPLICATION_SAI2 ] = HydrusStaticDir.GetStaticPath( 'sai.png' )
     mimes_to_default_thumbnail_paths[ HC.APPLICATION_KRITA ] = HydrusStaticDir.GetStaticPath( 'krita.png' )
+    mimes_to_default_thumbnail_paths[ HC.IMAGE_OPENRASTER ] = HydrusStaticDir.GetStaticPath( 'image.png' )
     mimes_to_default_thumbnail_paths[ HC.APPLICATION_PAINT_DOT_NET ] = HydrusStaticDir.GetStaticPath( 'paintnet.png' )
     mimes_to_default_thumbnail_paths[ HC.APPLICATION_FLASH ] = HydrusStaticDir.GetStaticPath( 'flash.png' )
     mimes_to_default_thumbnail_paths[ HC.APPLICATION_XCF ] = HydrusStaticDir.GetStaticPath( 'xcf.png' )
@@ -114,7 +116,7 @@ def GenerateThumbnailNumPy( path, target_resolution, mime, duration_ms, num_fram
     
     if mime == HC.APPLICATION_CBZ or mime == HC.APPLICATION_EPUB:
         
-        ( os_file_handle, temp_path ) = HydrusTemp.GetTempPath()
+        ( os_file_handle, temp_path ) = HydrusTemp.GetTempPath( 'cover_page_thumb' )
         
         try:
             
@@ -148,7 +150,7 @@ def GenerateThumbnailNumPy( path, target_resolution, mime, duration_ms, num_fram
         
     elif mime == HC.APPLICATION_CLIP:
         
-        ( os_file_handle, temp_path ) = HydrusTemp.GetTempPath()
+        ( os_file_handle, temp_path ) = HydrusTemp.GetTempPath( 'clip_thumb' )
         
         try:
             
@@ -180,6 +182,19 @@ def GenerateThumbnailNumPy( path, target_resolution, mime, duration_ms, num_fram
             thumbnail_numpy = GenerateDefaultThumbnail( mime, target_resolution )
             
         
+    elif mime == HC.IMAGE_OPENRASTER:
+        
+        try:
+            
+            thumbnail_numpy = HydrusORAHandling.GenerateThumbnailNumPyFromOraPath( path, target_resolution )
+            
+        except Exception as e:
+            
+            PrintMoreThumbErrorInfo( e, f'Problem generating thumbnail for "{path}".', extra_description = extra_description )
+            
+            thumbnail_numpy = GenerateDefaultThumbnail( mime, target_resolution )
+            
+        
     elif mime == HC.APPLICATION_PAINT_DOT_NET:
         
         try:
@@ -195,7 +210,7 @@ def GenerateThumbnailNumPy( path, target_resolution, mime, duration_ms, num_fram
         
     elif mime == HC.APPLICATION_PROCREATE:
         
-        ( os_file_handle, temp_path ) = HydrusTemp.GetTempPath()
+        ( os_file_handle, temp_path ) = HydrusTemp.GetTempPath( 'procreate_thumb' )
         
         try:
             
@@ -465,7 +480,7 @@ def GetFileInfo( path, mime = None, ok_to_look_for_hydrus_updates = False ):
     # keep this in the specific-first, general-last test order
     if mime == HC.APPLICATION_CBZ or mime == HC.APPLICATION_EPUB:
         
-        ( os_file_handle, temp_path ) = HydrusTemp.GetTempPath()
+        ( os_file_handle, temp_path ) = HydrusTemp.GetTempPath( 'coverpage_file' )
         
         try:
             
@@ -493,6 +508,17 @@ def GetFileInfo( path, mime = None, ok_to_look_for_hydrus_updates = False ):
         try:
             
             ( width, height ) = HydrusKritaHandling.GetKraProperties( path )
+            
+        except HydrusExceptions.NoResolutionFileException:
+            
+            pass
+            
+        
+    elif mime == HC.IMAGE_OPENRASTER:
+        
+        try:
+            
+            ( width, height ) = HydrusORAHandling.GetOraProperties( path )
             
         except HydrusExceptions.NoResolutionFileException:
             
@@ -690,6 +716,7 @@ headers_and_mime = [
     ( ( ( [0], [b'SAI-CANVAS'] ), ), HC.APPLICATION_SAI2 ),
     ( ( ( [0], [b'gimp xcf '] ), ), HC.APPLICATION_XCF ),
     ( ( ( [38, 42, 58, 63],[ b'application/x-krita'] ), ), HC.APPLICATION_KRITA ), # important this comes before zip files because this is also a zip file
+    ( ( ( [38, 42, 58, 63],[ b'image/openraster'] ), ), HC.IMAGE_OPENRASTER ),
     ( ( ( [0],[ b'PDN3'] ), ), HC.APPLICATION_PAINT_DOT_NET ), # Paint.NET 3.x, which is since 2006 and has xml data internally it seems
     ( ( ( [38, 43],[ b'application/epub+zip'] ), ), HC.APPLICATION_EPUB ),
     ( ( ( [4], [b'FORM'] ), ( [12], [b'DJVU', b'DJVM', b'PM44', b'BM44', b'SDJV'] ), ), HC.APPLICATION_DJVU ),

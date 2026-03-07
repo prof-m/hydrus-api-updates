@@ -59,7 +59,7 @@ There are now setup scripts that make this easy. You do not need any python expe
         
         Then, later, when you do the `git clone https://github.com/hydrusnetwork/hydrus` line, you will need to run `git checkout tags/v578`, which will rewind you to that point in time.
         
-        I can't promise anything though. The requirements.txt isn't perfect, and something else may break in future! You may like to think about moving to Linux.
+        I can't promise anything though. You may like to think about moving to Linux.
         
     
     If you do not know if you have Python, you probably do not. Let's check--right-click on any folder and select 'open in terminal' and copy/paste the following:
@@ -131,7 +131,7 @@ There are now setup scripts that make this easy. You do not need any python expe
 
 The whole repository will be copied to that location--this is now your install dir. You can move it if you like.
 
-If Git is not available, then just go to the [latest release](https://github.com/hydrusnetwork/hydrus/releases/latest) and download and extract the source code .zip somewhere.
+If Git is definitely not available, then go to the [latest release](https://github.com/hydrusnetwork/hydrus/releases/latest) and download and extract the source code .zip somewhere.
 
 !!! warning "Read-only install locations"
     Make sure the install directory has convenient write permissions (e.g. on Windows, don't put it in "Program Files"). Extracting straight to a spare drive, something like "D:\Hydrus Network", is ideal.
@@ -213,10 +213,12 @@ There are three special external libraries. You just have to get them and put th
 
 #### Environment setup
 
+Different systems sometimes call python different names. If I tell you to run `python blah` here and you get an error about it being missing, try `python3 blah`.
+
 === "Windows"
 
     
-    Double-click `setup_venv.bat`.
+    Double-click `setup_venv.py`. You can also run `python setup_venv.py` from the command line.
     
 
 === "Linux"
@@ -224,15 +226,19 @@ There are three special external libraries. You just have to get them and put th
     
     _You do not need to run the setup script as sudo, and doing so may cause some things not to work. Just regular you in a normal terminal._
     
-    The file is `setup_venv.sh`. You may be able to double-click it. If not, open a terminal in the folder and type:  
+    The file is `setup_venv.py`. You may be able to double-click it. If not, open a terminal in the folder and type:  
     
-    `./setup_venv.sh`
+    `./setup_venv.py`
+    
+    -or, explicitly-
+    
+    `python setup_venv.py`
     
     If you do not have permission to execute the file, do this before trying again:  
     
-    `chmod +x setup_venv.sh`
+    `chmod +x setup_venv.py`
     
-    You will likely have to do the same on the other .sh files.
+    You will likely have to do the same on the other .sh or .py files.
     
     !!! info "Desktop File"
         If you like, you can later run the `setup_desktop.sh` file to install an io.github.hydrusnetwork.hydrus.desktop file to your applications folder. (Or check the template in `install_dir/static/io.github.hydrusnetwork.hydrus.desktop` and do it yourself!)
@@ -243,15 +249,23 @@ There are three special external libraries. You just have to get them and put th
     
     _You do not need to run the setup script as sudo, and doing so may cause some things not to work. Just regular you._
     
-    Double-click `setup_venv.command`.
+    The file is `setup_venv.py`. You may be able to double-click it. If not, open a terminal in the folder and type:  
+    
+    `./setup_venv.py`
+    
+    -or, explicitly-
+    
+    `python setup_venv.py`
     
     If you do not have permission to run the .command file, open a terminal on the folder and enter:
     
-    `chmod +x setup_venv.command`
+    If you do not have permission to execute the file, do this before trying again:  
     
-    You likely also need this to tell Gatekeeper you are ok running it:
+    `chmod +x setup_venv.py`
     
-    `sudo xattr -rd com.apple.quarantine setup_venv.command`
+    We used to do this via a .command file. If you want to run one of the other .command files, you likely also need this to tell Gatekeeper you are ok running it:
+    
+    `sudo xattr -rd com.apple.quarantine the_script.command`
     
     You will likely have to do the same on the other .command files.
     
@@ -267,22 +281,26 @@ Then run the 'setup_help' script to build the help. This isn't necessary, but it
 #### Running it
 
 !!! note "Run the launch script, not the .py"
-    Do not run `hydrus_client.py`, because you will get errors about missing libraries (probably `yaml`/`qtpy`). You will be running `hydrus_client.bat/.sh/.command` instead.
+    Do not run `hydrus_client.py` on its own by, say double-clicking it, because you will get errors about missing libraries (probably `yaml`/`qtpy`). You will be running `hydrus_client.bat/.sh/.command` instead, or setting up a shortcut to the new python exe we just made in the venv dir.
     
     We have just set up a "venv", which is not the same as your system python, and so in order to run `hydrus_client.py`, we need to "activate" the venv first to load all the libraries we just installed with the `setup_venv` script. Feel free to check the contents of the launch scripts--they are very simple--to see how it works.
 
 === "Windows"
 
     Run `hydrus_client.bat` to start the client.
+    
+    Alternately, if you want a very simple shortcut, you can call the venv directly, using the python executable we just installed. The setup venv script may have given you an example. It will look something like this:
+    
+    `C:\Hydrus\venv\Scripts\pythonw.exe C:\Hydrus\hydrus_client.py`
 
 === "Linux"
 
     !!! warning "Wayland (and MPV)"
         Unfortunately, hydrus has several bad bugs in Wayland. The mpv window will often not embed properly into the media viewer, menus and windows may position on the wrong screen, and the taskbar icon may not work at all. Newer versions are less buggy, but some of these issues, particularly mpv embedding, seem to be intractable.
         
-        User testing suggests that the best solution for now is just to launch the program in X11, and I now encourage this for all Wayland users. Launching with the environment variable `QT_QPA_PLATFORM=xcb` (e.g. by putting `export QT_QPA_PLATFORM=xcb` in a boot script that launches `hydrus_client`) should do it. The 'xcb' should force X11.
+        If mpv is the only problem, then switch to the QtMediaPlayer under `options->media playback`.
         
-        It does not work for everyone, though. If it fails, another user says setting `WAYLAND_DISPLAY=` (as in setting it to nothing) or unsetting it entirely with `unset WAYLAND_DISPLAY`, which forces hydrus (and its embedded mpv windows) to use Xwayland, is another solution. You might need to do `sudo apt install xwayland` first.
+        If you really want mpv or have other UI issues, user testing suggests that the best solution for now is just to launch the program in X11. Launch the program _without_ the WAYLAND_DISPLAY variable and _with_ `QT_QPA_PLATFORM=xcb`, which you can achieve with `unset WAYLAND_DISPLAY` and `export QT_QPA_PLATFORM=xcb` in a boot script that launches `hydrus_client`. You might need to do `sudo apt install xwayland` first.
         
         You should be able to see which window manager hydrus thinks it is running under in `help->about`, on the "Qt" row.
         
@@ -308,16 +326,23 @@ Then run the 'setup_help' script to build the help. This isn't necessary, but it
         
         One user reports that Fedora might need `libxkbcommon` too.
         
-        If you still have trouble with the default Qt6 version, try running setup_venv again and choose a different version. There are several to choose from, including (w)riting a custom version. Check the advanced requirements.txts files in `install_dir/static/requirements/advanced` for more info, and you can also work off this list: [PySide6](https://pypi.org/project/PySide6/#history)
+        If you still have trouble with the default Qt6 version, try running setup_venv again and choose a different version. There are several to choose from, including (w)riting a custom version. If you are having a lot of trouble, this list can be worth exploring: [PySide6](https://pypi.org/project/PySide6/#history)
         
     
     Run `hydrus_client.sh` to start the client. Don't forget to `chmod +x hydrus_client.sh` if you need it.
     
+    Alternately, if you want a very simple shortcut, you can call the venv directly, using the python executable we just installed. The setup venv script may have given you an example. It will look something like this:
+    
+    `/path/to/your/Hydrus/venv/bin/python /path/to/your/Hydrus/hydrus_client.py`
 
 === "macOS"
-
+    
     Run `hydrus_client.command` to start the client. Don't forget to `chmod +x hydrus_client.command` and `sudo xattr -rd com.apple.quarantine hydrus_client.command` if you need it.
-
+    
+    Alternately, if you want a very simple shortcut, you can call the venv directly, using the python executable we just installed. The setup venv script may have given you an example. It will look something like this:
+    
+    `/path/to/your/Hydrus/venv/bin/python /path/to/your/Hydrus/hydrus_client.py`
+    
 The first start will take a little longer (it has to compile all the code into something your computer understands). Once up, it will operate just like a normal build with the same folder structure and so on.
 
 !!! warning "Missing a Library"
@@ -336,6 +361,10 @@ The first start will take a little longer (it has to compile all the code into s
     `C:\Windows\System32\cmd.exe /c "C:\hydrus\Hydrus Source\hydrus_client-user.bat"`
     
     This is a shortcut to tell the terminal to run the bat; it should be pinnable to start. You can give it a nice name and the hydrus icon and you should be good!
+    
+    Or you can make a shortcut with the direct python executable that we saw before, something like:
+    
+    `C:\Hydrus\venv\Scripts\pythonw.exe C:\Hydrus\hydrus_client.py`
 
 === "Linux"
 
@@ -436,31 +465,42 @@ Then, to create a new venv:
 !!! info "venvs"
     That `source venv/bin/activate` line turns on your venv. You should see your terminal prompt note you are now in it. A venv is an isolated environment of python that you can install modules to without worrying about breaking something system-wide. **Ideally, you do not want to install python modules to your system python.**  
     
+    When you run the "activate" script, your environment is updated so that any time you type `python`, it runs the python copy we made in the venv directory and loads those libraries we have installed to it.
+    
     This activate line will be needed every time you alter your venv or run the `hydrus_client.py`/`hydrus_server.py` files. You can easily tuck this into a launch script--check the easy setup files for examples.  
     
-    On Windows Powershell, the command is `.\venv\Scripts\activate`, but you may find the whole deal is done much easier in cmd than Powershell. When in Powershell, just type `cmd` to get an old fashioned command line. In cmd, the launch command is just `venv\scripts\activate.bat`, no leading period.
+    If you would prefer not to run the "activate" script, you can just invoke the actual python binary instead. Perhaps this is easier for a shortcut or script you want to set up. In this case, rather than entering `python` on its own, you are doing calls like this:
+    
+    `/path/to/my/hydrus/venv/bin/python -m pip install .`
+    
+    -or-
+    
+    `C:\Hydrus Network\venv\Scripts\python -m pip install .`
+    
 
-**After you have activated the venv**, you can use pip to install everything you need to it from the requirements.txt in the install_dir:
+**After you have activated the venv**, you can use pip to install everything you need to it from the `pyproject.toml` in the install_dir:
+
+_This is going to be simpler in future!_
 
 ```
-python -m pip install -r requirements.txt
+python -m pip install . --group qt6-normal --group opencv-normal --group mpv-normal --group other-normal
 ```
 
-If you need different versions of libraries, check the cut-up requirements.txts the 'advanced' easy-setup uses in `install_dir/static/requirements/advanced`. Check and compare their contents to the main requirements.txt to see what is going on. You'll likely need the newer OpenCV on newer Python, for instance.
+If you need different versions of libraries, check the `pyproject.toml` file itself. For instance, for the newer OpenCV and Qt, you'd do this:
+
+```
+python -m pip install . --group qt6-test --group opencv-test --group mpv-normal --group other-normal
+```
 
 ### Qt { id="qt" }
 
-Qt is the UI library. You can run PySide6 or PyQt6. I used to support Qt5, but no longer. A wrapper library called `qtpy` allows this. The default is PySide6, but if it is missing, qtpy will fall back to an available alternative. For PyQt6, you need an extra Chart module, so go:
+Qt is the UI library. I used to support Qt5, but no longer. You can run PySide6 or PyQt6--a wrapper library called `qtpy` allows this. The default is PySide6, but if it is missing, qtpy will fall back to an available alternative. You can choose PyQt6 like this:
 
 ```
-python -m pip install qtpy PyQt6-Charts PyQt6
+python -m pip install . --group qt6-new-pyqt6 --group opencv-normal --group mpv-normal --group other-normal
 ```
 
 If you have multiple Qts installed, then select which one you want to use by setting the `QT_API` environment variable to 'pyside6' or 'pyqt6'. Check _help->about_ to make sure it loaded the right one.
-
-If you want to set QT_API in a batch file, do this:
-
-`set QT_API=pyqt6`
 
 !!! note "Qt compatibility"
     
@@ -480,16 +520,16 @@ If you want to set QT_API in a batch file, do this:
     
     Or check your OS's package manager.
     
-    If you still have trouble with the default Qt6 version, try running setup_venv again and choose a different version. There are several to choose from, including (w)riting a custom version. Check the advanced requirements.txts files in `install_dir/static/requirements/advanced` for more info, and you can also work off this list: [PySide6](https://pypi.org/project/PySide6/#history)
+    If you still have trouble with the default Qt6 version, try running setup_venv again and choose a different version. There are several to choose from, including (w)riting a custom version. If you are having a lot of trouble, this list can be worth exploring: [PySide6](https://pypi.org/project/PySide6/#history)
     
 
 ### mpv { id="mpv" }
 
 MPV is optional and complicated, but it is great, so it is worth the time to figure out!
 
-As well as the python wrapper, 'python-mpv' (which is in the requirements.txt), you also need the underlying dev library. This is _not_ mpv the program, but `libmpv`, often called `libmpv1` or `libmpv2`.
+As well as the python wrapper that we installed in the venv, you also need the underlying dev library, which means a .dll or .so file. This is _not_ mpv the program, but `libmpv`, often called `libmpv1` or `libmpv2`.
 
-For Windows, the dll builds are [here](https://sourceforge.net/projects/mpv-player-windows/files/libmpv/), although getting a stable version can be difficult. Just put it in your hydrus base install directory. Check the links in the easy-setup guide above for good versions. You can also just grab the 'mpv-1.dll'/'mpv-2.dll' I bundle in my extractable Windows release.
+For Windows, the dll builds are [here](https://sourceforge.net/projects/mpv-player-windows/files/libmpv/), although selecting a stable version can be difficult on older machines. Just put it in your hydrus base install directory. Check the links in the easy-setup guide above for good versions. You can also just grab the 'mpv-1.dll'/'mpv-2.dll' I bundle in my extractable Windows release.
 
 If you are on Linux, you can usually get `libmpv` like so:
 
@@ -544,40 +584,9 @@ python hydrus_client.py -d="/path/to/database"
 
 When running from source you may want to [build the hydrus help docs](about_docs.md) yourself. You can also check the `setup_help` scripts in the install directory. 
 
-### Building Packages on Windows { id="windows_build" }
-
-_This info is old, ignore unless you are desperate._
-
-Almost everything you get through pip is provided as pre-compiled 'wheels' these days, but if you get an error about Visual Studio C++ when you try to pip something, you have two choices:
-
-- Get Visual Studio 14/whatever build tools
-- Pick a different library version
-
-Option B is always simpler. If opencv-headless as the requirements.txt specifies won't compile in your python, then try a newer version--there will probably be one of these new highly compatible wheels and it'll just work in seconds. Check my build scripts and various requirements.txts for ideas on what versions to try for your python etc...
-
-If you are confident you need Visual Studio tools, then prepare for headaches. Although the tools are free from Microsoft, it can be a pain to get them through the official (and often huge) downloader installer from Microsoft. Expect a 5GB+ install with an eye-watering number of checkboxes that probably needs some stackexchange searches to figure out.
-
-On Windows 10, [Chocolatey](https://chocolatey.org/) has been the easy answer. These can be useful:
-
-```
-choco install -y vcredist-all
-choco install -y vcbuildtools (this is Visual Studio 2015)
-choco install -y visualstudio2017buildtools
-choco install -y visualstudio2022buildtools
-choco install -y windows-sdk-10.0
-```
-
-_Update:_ On Windows 11, I have had some trouble with the above. The VS2015 seems not to install any more. A basic stock Win 11 install with Python 3.10 or 3.11 is fine getting everything on our requirements, but freezing with PyInstaller may have trouble finding certain 'api-***.dll' files. 
-
-### Additional Windows Info { id="additional_windows" }
-
-This does not matter much any more, but in the old days, building modules like lz4 and lxml was a nightmare, and hooking up Visual Studio was even more difficult. [This page](http://www.lfd.uci.edu/~gohlke/pythonlibs/) has a lot of prebuilt binaries--I have found it very helpful many times.
-
-I have a fair bit of experience with Windows python, so send me a mail if you need help.
-
 ## My Code { id="my_code" }
 
-I use Windows and Linux, but I have much more experience with Windows, and the program is most stable and clean there. I have very little experience with macOS, but I appreciate bug reports for any platform.
+I use Windows and Linux, but I have more experience with Windows, and the program is generally most stable and clean there. I have very little experience with macOS, but I appreciate bug reports for any platform.
 
 My coding style is unusual and unprofessional. Everything is pretty much hacked together. I'm constantly throwing new code together and then cleaning and overhauling it down the line. If you are interested in how things work, look through the source and please do ask me if you don't understand something.
 
