@@ -401,9 +401,36 @@ def GetPrettyMediaResultInfoLines( media_result: ClientMediaResult.MediaResult, 
         line_is_interesting = CG.client_controller.new_options.GetBoolean( 'file_info_line_consider_archived_interesting' )
         
         pretty_info_lines.append( ClientMediaResultPrettyInfoObjects.PrettyMediaResultInfoLine( line, line_is_interesting, tooltip = tooltip ) )
-        
-        
-    
+
+
+    #
+
+    if CG.client_controller.new_options.GetBoolean( 'file_info_line_consider_last_viewed_time_interesting' ):
+
+        last_viewed_ms = None
+
+        for canvas_type in ( CC.CANVAS_MEDIA_VIEWER, CC.CANVAS_CLIENT_API, CC.CANVAS_PREVIEW ):
+
+            last_viewed_timestamp_ms = times_manager.GetLastViewedTimestampMS( canvas_type )
+
+            if last_viewed_timestamp_ms is not None:
+
+                last_viewed_ms = last_viewed_timestamp_ms
+
+                break
+
+
+
+        if last_viewed_ms is not None:
+
+            line = f'last viewed: {HydrusTime.TimestampToPrettyTimeDelta( HydrusTime.SecondiseMS( last_viewed_ms ) )}'
+
+            tooltip = f'last viewed: {HydrusTime.TimestampToPrettyTimeDelta( HydrusTime.SecondiseMS( last_viewed_ms ), reverse_iso_delta_setting = True )}'
+
+            pretty_info_lines.append( ClientMediaResultPrettyInfoObjects.PrettyMediaResultInfoLine( line, True, tooltip = tooltip ) )
+
+
+
     if file_info_manager.has_audio:
         
         pretty_info_lines.append( ClientMediaResultPrettyInfoObjects.PrettyMediaResultInfoLine( 'has audio', False ) )

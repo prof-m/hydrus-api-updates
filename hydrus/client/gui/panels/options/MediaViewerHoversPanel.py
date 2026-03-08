@@ -64,7 +64,10 @@ class MediaViewerHoversPanel( ClientGUIOptionsPanelBase.OptionsPagePanel ):
         
         self._file_info_line_consider_trash_reason_interesting = QW.QCheckBox( top_hover_summary_panel )
         self._file_info_line_consider_trash_reason_interesting.setToolTip( ClientGUIFunctions.WrapToolTip( 'Should we show the reason a file is trashed in the top hover file info summary?' ) )
-        
+
+        self._file_info_line_consider_last_viewed_time_interesting = QW.QCheckBox( top_hover_summary_panel )
+        self._file_info_line_consider_last_viewed_time_interesting.setToolTip( ClientGUIFunctions.WrapToolTip( 'Should we show the most recent time the file was previously viewed in the top hover file info summary?' ) )
+
         self._hide_uninteresting_modified_time = QW.QCheckBox( top_hover_summary_panel )
         self._hide_uninteresting_modified_time.setToolTip( ClientGUIFunctions.WrapToolTip( 'If the file has a modified time similar to its import time (specifically, the number of seconds since both events differs by less than 10%), hide the modified time in the top hover file info summary.' ) )
         
@@ -101,6 +104,7 @@ class MediaViewerHoversPanel( ClientGUIOptionsPanelBase.OptionsPagePanel ):
         self._file_info_line_consider_file_services_import_times_interesting.setChecked( self._new_options.GetBoolean( 'file_info_line_consider_file_services_import_times_interesting' ) )
         self._file_info_line_consider_trash_time_interesting.setChecked( self._new_options.GetBoolean( 'file_info_line_consider_trash_time_interesting' ) )
         self._file_info_line_consider_trash_reason_interesting.setChecked( self._new_options.GetBoolean( 'file_info_line_consider_trash_reason_interesting' ) )
+        self._file_info_line_consider_last_viewed_time_interesting.setChecked( self._new_options.GetBoolean( 'file_info_line_consider_last_viewed_time_interesting' ) )
         self._hide_uninteresting_modified_time.setChecked( self._new_options.GetBoolean( 'hide_uninteresting_modified_time' ) )
         self._use_nice_resolution_strings.setChecked( self._new_options.GetBoolean( 'use_nice_resolution_strings' ) )
         
@@ -141,6 +145,7 @@ class MediaViewerHoversPanel( ClientGUIOptionsPanelBase.OptionsPagePanel ):
         rows.append( ( 'Show file service add times: ', self._file_info_line_consider_file_services_import_times_interesting ) )
         rows.append( ( 'Show file trash times: ', self._file_info_line_consider_trash_time_interesting ) )
         rows.append( ( 'Show file trash reasons: ', self._file_info_line_consider_trash_reason_interesting ) )
+        rows.append( ( 'Show last viewed time: ', self._file_info_line_consider_last_viewed_time_interesting ) )
         rows.append( ( 'Hide uninteresting modified times: ', self._hide_uninteresting_modified_time ) )
         rows.append( ( 'Swap in common resolution labels:', self._use_nice_resolution_strings ) )
         
@@ -217,6 +222,7 @@ class MediaViewerHoversPanel( ClientGUIOptionsPanelBase.OptionsPagePanel ):
         self._new_options.SetBoolean( 'file_info_line_consider_file_services_import_times_interesting', self._file_info_line_consider_file_services_import_times_interesting.isChecked() )
         self._new_options.SetBoolean( 'file_info_line_consider_trash_time_interesting', self._file_info_line_consider_trash_time_interesting.isChecked() )
         self._new_options.SetBoolean( 'file_info_line_consider_trash_reason_interesting', self._file_info_line_consider_trash_reason_interesting.isChecked() )
+        self._new_options.SetBoolean( 'file_info_line_consider_last_viewed_time_interesting', self._file_info_line_consider_last_viewed_time_interesting.isChecked() )
         self._new_options.SetBoolean( 'hide_uninteresting_modified_time', self._hide_uninteresting_modified_time.isChecked() )
         self._new_options.SetBoolean( 'use_nice_resolution_strings', self._use_nice_resolution_strings.isChecked() )
         

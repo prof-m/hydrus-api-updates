@@ -317,6 +317,7 @@ class ClientOptions( HydrusSerialisable.SerialisableBase ):
             'file_info_line_consider_file_services_import_times_interesting' : False,
             'file_info_line_consider_trash_time_interesting' : False,
             'file_info_line_consider_trash_reason_interesting' : False,
+            'file_info_line_consider_last_viewed_time_interesting' : False,
             'set_requests_ca_bundle_env' : False,
             'mpv_loop_playlist_instead_of_file' : False,
             'draw_thumbnail_rating_background' : True,
